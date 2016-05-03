@@ -1,6 +1,9 @@
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <iostream>
+#include <utility>
+#include <vector>
 
 #include <xercesc/framework/XMLFormatter.hpp>
 #include <xercesc/sax/SAXParseException.hpp>
@@ -8,6 +11,7 @@
 #include <xercesc/util/XMLUniDefs.hpp>
 
 #include "pom_xml_handler.h"
+#include "xml_tag.h"
 
 namespace pommade {
 using namespace std;
@@ -21,22 +25,17 @@ const XMLCh pom_xml_handler::start_pi[] = {xercesc::chOpenAngle, xercesc::chQues
 const XMLCh pom_xml_handler::xml_decl1[] = {xercesc::chOpenAngle, xercesc::chQuestion, xercesc::chLatin_x, xercesc::chLatin_m, xercesc::chLatin_l, xercesc::chSpace, xercesc::chLatin_v, xercesc::chLatin_e, xercesc::chLatin_r, xercesc::chLatin_s, xercesc::chLatin_i, xercesc::chLatin_o, xercesc::chLatin_n, xercesc::chEqual, xercesc::chDoubleQuote, xercesc::chDigit_1, xercesc::chPeriod, xercesc::chDigit_0, xercesc::chDoubleQuote, xercesc::chSpace, xercesc::chLatin_e, xercesc::chLatin_n, xercesc::chLatin_c, xercesc::chLatin_o, xercesc::chLatin_d, xercesc::chLatin_i, xercesc::chLatin_n, xercesc::chLatin_g, xercesc::chEqual, xercesc::chDoubleQuote, xercesc::chNull};
 const XMLCh pom_xml_handler::xml_decl2[] = {xercesc::chDoubleQuote, xercesc::chQuestion, xercesc::chCloseAngle, xercesc::chLF, xercesc::chNull};
 
-
-pom_xml_handler::pom_xml_handler() : formatter("UTF8", 0, this, XMLFormatter::NoEscapes, XMLFormatter::UnRep_CharRef), level{}, element_level{}, nl_cnt{} {
+pom_xml_handler::pom_xml_handler() : formatter("UTF8", 0, this, XMLFormatter::NoEscapes, XMLFormatter::UnRep_CharRef) {
   formatter << xml_decl1 << formatter.getEncodingName() << xml_decl2;
 }
 
 void
-pom_xml_handler::writeChars(const XMLByte* const buf, const XMLSize_t len, XMLFormatter* const) {
-  cout.write(reinterpret_cast<const char*>(buf), len);
-  cout.flush();
-}
+pom_xml_handler::writeChars(const XMLByte* const buf, const XMLSize_t len, XMLFormatter* const) {}
 
 int
-pom_xml_handler::ignorable_newlines(const XMLCh* const buf, const XMLSize_t len) {
-  const xmlstring ws{buf, len};
+pom_xml_handler::ignorable_newlines(const string& content) {
   unsigned int nl_cnt{};
-  for (const auto c : ws) {
+  for (const auto c : content) {
     if (!isspace(c))
       return -1;
     if (c == '\n')
@@ -47,74 +46,69 @@ pom_xml_handler::ignorable_newlines(const XMLCh* const buf, const XMLSize_t len)
 
 void
 pom_xml_handler::characters(const XMLCh* const buf, const XMLSize_t len) {
-  const int nl_cnt{ignorable_newlines(buf, len)};
-  if (nl_cnt < 0)
-    formatter.formatBuf(buf, len, XMLFormatter::CharEscapes);
-  else
-    this->nl_cnt += nl_cnt;
+  const xmlstring content{buf, len};
+  const int nl_cnt{ignorable_newlines(content)};
+  if (nl_cnt < 0) {
+    assert(!tag_path.empty());
+    auto* const tagp = tagp_stack.top();
+    assert(tagp->subtag_cnt() == 0);
+    tagp->content.reset(new xmlstring{buf, len});
+    tag_comment.reset();
+  }
+}
+
+void
+pom_xml_handler::endDocument() {
+  assert(tag_path.empty() && tagp_stack.empty());
+  if (tag_comment) {
+    cerr << "discarding comment before document end" << endl;
+    cerr.flush();
+    tag_comment.reset();
+  }
+  assert(root_tag);
+  root_tag->sort_subtags();
+  cout << *root_tag;
 }
 
 void
 pom_xml_handler::startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const Attributes& attrs) {
-  if (level && nl_cnt > 1)
-    formatter << XMLFormatter::NoEscapes << chLF;
-  formatter << XMLFormatter::NoEscapes << chLF;
-  if (level) {
-    for (auto i = 0U; i < level; ++i)
-      formatter << chSpace << chSpace;
+  xml_tag* tagp{};
+  if (!root_tag) {
+    assert(tagp_stack.empty());
+    root_tag.reset(new xml_tag{tag_path, xmlstring{qname}, move(tag_comment)});
+    tagp = root_tag.get();
+  } else {
+    assert(!tagp_stack.empty() && !tagp->content);
+    tagp = tagp_stack.top()->add_subtag(xml_tag{tag_path, xmlstring{qname}, move(tag_comment)});
   }
-  element_level = level;
+  tagp_stack.push(tagp);
 
-  formatter << XMLFormatter::NoEscapes << chOpenAngle << qname;
-  const XMLSize_t len = attrs.getLength();
-  for (XMLSize_t i = 0; i < len; i++)
-    formatter << chSpace << attrs.getQName(i) << chEqual << chDoubleQuote << XMLFormatter::AttrEscapes << attrs.getValue(i) << XMLFormatter::NoEscapes << chDoubleQuote;
-  formatter << chCloseAngle;
-
-  ++level;
-  nl_cnt = 0;
+  tag_path += '/' + xmlstring{qname};
 }
 
 void
 pom_xml_handler::endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname) {
-  if (--level > element_level) {
-    formatter << XMLFormatter::NoEscapes << chLF;
-    if (level) {
-      for (auto i = 0U; i < level; ++i)
-        formatter << chSpace << chSpace;
-    }
+  const string::size_type pos{tag_path.rfind('/')};
+  assert(pos != string::npos && xmlstring{qname} == tag_path.substr(pos + 1));
+  if (tag_comment) {
+    cerr << "discarding comment before '" + tag_path + "' end" << endl;
+    cerr.flush();
+    tag_comment.reset();
   }
-  formatter << XMLFormatter::NoEscapes << end_element << qname << chCloseAngle;
 
-  element_level = nl_cnt = 0;
+  assert(!tagp_stack.empty());
+  tagp_stack.pop();
+
+  tag_path = tag_path.substr(0, pos);
 }
 
 void
 pom_xml_handler::comment(const XMLCh* const buf, const XMLSize_t len) {
-  if (level && nl_cnt > 1)
-    formatter << XMLFormatter::NoEscapes << chLF;
-  if (nl_cnt)
-    formatter << XMLFormatter::NoEscapes << chLF;
-  if (level) {
-    for (auto i = 0U; i < level; ++i)
-      formatter << chSpace << chSpace;
-  } else if (!nl_cnt)
-    formatter << XMLFormatter::NoEscapes << chSpace;
-  formatter << XMLFormatter::NoEscapes << start_comment;
-  for (const auto* bufp = buf; bufp < buf + len; ++bufp)
-    formatter << *bufp;
-  formatter << end_comment;
-
-  nl_cnt = 0;
+  tag_comment.reset(new xmlstring{buf, len});
 }
 
 void
-pom_xml_handler::processingInstruction(const XMLCh* const target, const XMLCh* const data) {
-  formatter << XMLFormatter::NoEscapes << start_pi << target;
-  if (data)
-    formatter << chSpace << data;
-  formatter << XMLFormatter::NoEscapes << end_pi;
-}
+pom_xml_handler::processingInstruction(const XMLCh* const target, const XMLCh* const data) {}
 
 void
 pom_xml_handler::error(const SAXParseException& e) {
@@ -131,4 +125,3 @@ pom_xml_handler::warning(const SAXParseException& e) {
   cerr << "warning at file " << xmlstring{e.getSystemId()} << ", line " << e.getLineNumber() << ", col " << e.getColumnNumber() << ": " << xmlstring{e.getMessage()} << endl;
 }
 }
-

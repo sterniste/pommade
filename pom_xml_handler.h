@@ -1,14 +1,20 @@
+#ifndef POM_XML_HANDLER_H
+#define POM_XML_HANDLER_H
+
 #include <memory>
+#include <stack>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include <xercesc/framework/XMLFormatter.hpp>
 #include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/sax2/DefaultHandler.hpp>
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/util/XMLUniDefs.hpp>
-namespace xercesc_3_1 { class Attributes; }
+namespace xercesc_3_1 {
+class Attributes;
+}
+
+#include "xml_tag.h"
 
 namespace pommade {
 
@@ -27,13 +33,6 @@ struct xmlstring : public std::string {
   }
 };
 
-struct xml_tag {
-  std::string path;
-  std::unique_ptr<const std::string> content;
-
-  xml_tag(const std::string& path, std::unique_ptr<const std::string>&& content) : path{path}, content{std::move(content)} {}
-};
-
 class pom_xml_handler : public xercesc::DefaultHandler, private xercesc::XMLFormatTarget {
   static const XMLCh end_comment[];
   static const XMLCh end_element[];
@@ -44,11 +43,12 @@ class pom_xml_handler : public xercesc::DefaultHandler, private xercesc::XMLForm
   static const XMLCh xml_decl2[];
 
   xercesc::XMLFormatter formatter;
-  unsigned int level, element_level, nl_cnt;
-  std::string tag_path, tag_comment, tag_content;
-  std::vector<xml_tag> tags;
+  std::string tag_path;
+  std::unique_ptr<const std::string> tag_comment;
+  std::stack<xml_tag*> tagp_stack;
+  std::unique_ptr<xml_tag> root_tag;
 
-  static int ignorable_newlines(const XMLCh* const buf, const XMLSize_t len);
+  static int ignorable_newlines(const std::string& content);
 
  public:
   ~pom_xml_handler() {}
@@ -57,6 +57,7 @@ class pom_xml_handler : public xercesc::DefaultHandler, private xercesc::XMLForm
   void writeChars(const XMLByte* const buf, const XMLSize_t len, xercesc::XMLFormatter* const formatter) override;
   void characters(const XMLCh* const buf, const XMLSize_t len) override;
 
+  void endDocument() override;
   void startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const xercesc_3_1::Attributes& attrs) override;
   void endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname) override;
 
@@ -68,3 +69,5 @@ class pom_xml_handler : public xercesc::DefaultHandler, private xercesc::XMLForm
   void fatalError(const xercesc::SAXParseException& e) override;
 };
 }
+
+#endif
