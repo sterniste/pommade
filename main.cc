@@ -1,39 +1,37 @@
 #include <iostream>
+#include <memory>
 
+#include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/sax2/SAX2XMLReader.hpp>
 #include <xercesc/sax2/XMLReaderFactory.hpp>
-#include <xercesc/sax2/DefaultHandler.hpp>
-#include <xercesc/framework/StdInInputSource.hpp>
+#include <xercesc/util/PlatformUtils.hpp>
+#include <xercesc/util/XMLException.hpp>
+#include <xercesc/util/XMLUni.hpp>
 
-#include "pom_xml_handler.h"
+#include "xml_handler.h"
+#include "xml_node.h"
 
 namespace {
 using namespace std;
-using namespace xercesc;
 using namespace pommade;
+using namespace xercesc_3_1;
 }
 
 int
 main(int argc, const char* argv[]) {
+  XMLPlatformUtils::Initialize();
   try {
-    XMLPlatformUtils::Initialize();
-
-    SAX2XMLReader* parser = XMLReaderFactory::createXMLReader();
+    unique_ptr<SAX2XMLReader> parser{XMLReaderFactory::createXMLReader()};
     parser->setFeature(XMLUni::fgSAX2CoreValidation, false);
     parser->setFeature(XMLUni::fgSAX2CoreNameSpaces, false);
 
-    pom_xml_handler handler;
+    xml_handler handler;
     parser->setContentHandler(&handler);
     parser->setErrorHandler(&handler);
     parser->setLexicalHandler(&handler);
 
-    if (argc >= 1)
-      parser->parse(argv[1]);
-    else {
-      StdInInputSource siis;
-      parser->parse(siis);
-    }
-    delete parser;
+    parser->parse(argv[1]);
+    unique_ptr<const xml_node> root_node{handler.root()};
   } catch (const XMLException& e) {
     cout << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
     return 1;
