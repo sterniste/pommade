@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cctype>
 #include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -10,11 +11,12 @@
 #include <xercesc/sax2/Attributes.hpp>
 #include <xercesc/util/XMLString.hpp>
 
-#include "xml_handler.h"
-#include "xml_node.h"
+#include "xml_parser.h"
+#include "xml_graph.h"
 
-namespace pommade {
+namespace xml_parser {
 using namespace std;
+    using namespace xml_graph;
 using namespace xercesc_3_1;
 
 xmlstring::xmlstring(const XMLCh* buf) {

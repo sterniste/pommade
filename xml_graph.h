@@ -1,14 +1,13 @@
-#ifndef XML_NODE_H
-#define XML_NODE_H
+#ifndef XML_GRAPH_H
+#define XML_GRAPH_H
 
 #include <iosfwd>
 #include <memory>
 #include <string>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
-namespace pommade {
+namespace xml_graph {
 
 class xml_tree;
 

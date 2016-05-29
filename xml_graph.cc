@@ -4,9 +4,9 @@
 #include <utility>
 #include <vector>
 
-#include "xml_node.h"
+#include "xml_graph.h"
 
-namespace pommade {
+namespace xml_graph {
 using namespace std;
 
 xml_node::xml_node(const xml_node& that) : lineno{that.lineno}, level{that.level}, name{that.name}, comment{that.comment ? new string{*that.comment} : nullptr}, content{that.content ? new string{*that.content} : nullptr}, subtree{that.subtree ? new xml_tree{*that.subtree} : nullptr} {}

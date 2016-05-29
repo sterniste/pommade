@@ -1,5 +1,5 @@
-#ifndef POM_XML_HANDLER_H
-#define POM_XML_HANDLER_H
+#ifndef XML_PARSER_H
+#define XML_PARSER_H
 
 #include <memory>
 #include <stack>
@@ -13,9 +13,9 @@ class Attributes;
 class Locator;
 }
 
-#include "xml_node.h"
+#include "xml_graph.h"
 
-namespace pommade {
+namespace xml_parser {
 
 struct xmlstring : public std::string {
   xmlstring(const XMLCh* buf);
@@ -26,8 +26,8 @@ struct xmlstring : public std::string {
 class xml_handler : public xercesc::DefaultHandler {
   std::string node_path;
   std::unique_ptr<const std::string> node_comment;
-  std::stack<xml_node*> nodep_stack;
-  std::unique_ptr<xml_node> root_node;
+  std::stack<xml_graph::xml_node*> nodep_stack;
+  std::unique_ptr<xml_graph::xml_node> root_node;
   const xercesc::Locator* locator;
 
   static int ignorable_newlines(const std::string& content);
@@ -48,7 +48,7 @@ class xml_handler : public xercesc::DefaultHandler {
   void setDocumentLocator(const xercesc::Locator* locator) override { this->locator = locator; }
 
  public:
-  std::unique_ptr<const xml_node> root() { return std::move(root_node); }
+  std::unique_ptr<const xml_graph::xml_node> root() { return std::move(root_node); }
 };
 }
 
