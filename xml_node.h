@@ -16,6 +16,7 @@ class xml_node {
   friend std::ostream& operator<<(std::ostream& os, const xml_node& node);
 
  public:
+  unsigned int lineno;
   unsigned int level;
   std::string name;
   std::unique_ptr<const std::string> comment;
@@ -26,14 +27,13 @@ class xml_node {
 
  public:
   xml_node() {}
-  xml_node(xml_node&& that) : level{that.level}, name{std::move(that.name)}, comment{std::move(that.comment)}, content{std::move(that.content)}, subtree{std::move(that.subtree)} {}
+  xml_node(const xml_node& that);
 
-  xml_node(unsigned int level, const std::string& name) : level{level}, name{name} {}
-  xml_node(unsigned int level, const std::string& name, std::unique_ptr<const std::string>&& comment) : level{level}, name{name}, comment{std::move(comment)}, subtree{std::move(subtree)} {}
+  xml_node(unsigned int lineno, unsigned int level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : lineno{lineno}, level{level}, name{name}, comment{comment ? new std::string{*comment} : nullptr}, content{content ? new std::string{*content} : nullptr} {}
+  xml_node& operator=(const xml_node& that);
 
   bool operator==(const xml_node& that) const { return level == that.level && name == that.name; }
   bool operator<(const xml_node& that) const { return level < that.level || (level == that.level && name < that.name); }
-  xml_node& operator=(xml_node&& that);
 
   xml_node* add_subnode(xml_node&& subnode);
   const xml_tree* tree() const { return subtree ? subtree.get() : nullptr; }
@@ -49,9 +49,10 @@ class xml_tree_iterator {
   xml_tree_iterator(std::vector<std::unique_ptr<xml_node>>::const_iterator nodes_it) : nodes_it{nodes_it} {}
 
  public:
-  void operator++() { nodes_it++; }
+  xml_tree_iterator operator++() { ++nodes_it; return *this; }
   bool operator!=(const xml_tree_iterator& that) const { return that.nodes_it != nodes_it; }
   const xml_node& operator*() const { return **nodes_it; }
+  const xml_node* operator->() const { return nodes_it->get(); }
 };
 
 class xml_tree {
@@ -61,10 +62,17 @@ class xml_tree {
   std::vector<std::unique_ptr<xml_node>> nodes;
 
  public:
+  xml_tree() {}
+  xml_tree(const xml_tree& that);
+    
   xml_node* add_node(xml_node&& node);
+
   unsigned int node_cnt() const { return static_cast<unsigned int>(nodes.size()); }
   xml_tree_iterator cbegin() const { return xml_tree_iterator{nodes.cbegin()}; }
   xml_tree_iterator cend() const { return xml_tree_iterator{nodes.cend()}; }
+
+  std::vector<const xml_node*> find_in(const std::vector<const char*>& name_in) const;
+  std::vector<const xml_node*> find_not_in(const std::vector<const char*>& name_not_in) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const xml_tree& tree);

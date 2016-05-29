@@ -63,8 +63,6 @@ xml_handler::endDocument() {
     node_comment.reset();
   }
   assert(root_node);
-  cout << *root_node;
-  cout.flush();
 }
 
 void
@@ -72,12 +70,13 @@ xml_handler::startElement(const XMLCh* const uri, const XMLCh* const localname, 
   xml_node* nodep{};
   if (!root_node) {
     assert(nodep_stack.empty());
-    root_node.reset(new xml_node{0, xmlstring{qname}, move(node_comment)});
+    root_node.reset(new xml_node{locator->getLineNumber(), 0, xmlstring{qname}, node_comment.get()});
     nodep = root_node.get();
   } else {
     assert(!nodep_stack.empty() && !nodep_stack.top()->content);
-    nodep = nodep_stack.top()->add_subnode(xml_node{nodep_stack.top()->level + 1, xmlstring{qname}, move(node_comment)});
+    nodep = nodep_stack.top()->add_subnode(xml_node{locator->getLineNumber(), nodep_stack.top()->level + 1, xmlstring{qname}, node_comment.get()});
   }
+  node_comment.reset();
   nodep_stack.push(nodep);
 
   node_path += '/' + xmlstring{qname};
