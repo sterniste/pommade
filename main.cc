@@ -17,8 +17,7 @@ int
 main(int argc, const char* argv[]) {
   try {
     basic_xml_doc_handler doc_handler;
-    xml_doc_parser doc_parser{doc_handler};
-    cout << rewrite_pom(doc_parser.parse_doc(argv[1]).get());
+    cout << rewrite_pom(xml_doc_parser{doc_handler}.parse_doc(argv[1]).get());
   } catch (const XMLException& e) {
     cout << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
     return 1;
