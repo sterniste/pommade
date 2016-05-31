@@ -19,7 +19,7 @@ class xml_node {
   unsigned int level;
   std::string name;
   std::unique_ptr<const std::string> comment;
-  std::unique_ptr<const std::string> content;
+  std::unique_ptr<std::string> content;
 
  private:
   std::unique_ptr<xml_tree> subtree;

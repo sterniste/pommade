@@ -24,20 +24,24 @@ add_nonempty_rewrite(xml_node& node, const xml_node* subnode, xml_node (*rewrite
 xml_node
 rewrite_subnodes(const xml_node& node, xml_node (*rewrite)(const xml_node&)) {
   xml_node rw_node{node.lineno, node.level, node.name, node.comment.get()};
-  for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
-    rw_node.add_subnode(rewrite(*cit));
+  if (node.tree()) {
+    for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
+      rw_node.add_subnode(rewrite(*cit));
+  }
   return rw_node;
 }
 
 xml_node
 rewrite_sorted_subnodes(const xml_node& node, xml_node (*rewrite)(const xml_node&), bool (*compare)(const xml_node& a, const xml_node& b)) {
   xml_node rw_node{node.lineno, node.level, node.name, node.comment.get()};
-  vector<xml_node> subnodes;
-  for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
-    subnodes.push_back(rewrite(*cit));
-  sort(subnodes.begin(), subnodes.end(), compare);
-  for (auto&& subnode : subnodes)
-    rw_node.add_subnode(move(subnode));
+  if (node.tree()) {
+    vector<xml_node> subnodes;
+    for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
+      subnodes.push_back(rewrite(*cit));
+    sort(subnodes.begin(), subnodes.end(), compare);
+    for (auto &&subnode : subnodes)
+      rw_node.add_subnode(move(subnode));
+  }
   return rw_node;
 }
 
@@ -283,11 +287,11 @@ rewrite_execution(const xml_node& node) {
   assert(node.name == "execution" && !node.content && node.tree() && node.tree()->node_cnt() <= 4);
 
   const vector<const xml_node*> execution_tree{node.tree()->find_in(vector<const char*>{"id", "phase", "goals", "configuration"})};
-  assert(execution_tree.size() == 4 && execution_tree[1] && execution_tree[2]);
+  assert(execution_tree.size() == 4 && execution_tree[2]);
 
   xml_node rw_execution{node.lineno, node.level, node.name, node.comment.get()};
   add_nonempty_rewrite(rw_execution, execution_tree[0], [](const xml_node& node) { return rewrite_id(node); });
-  rw_execution.add_subnode(rewrite_phase(*execution_tree[1]));
+  add_nonempty_rewrite(rw_execution, execution_tree[1], [](const xml_node& node) { return rewrite_phase(node); });
   rw_execution.add_subnode(rewrite_goals(*execution_tree[2]));
   add_nonempty_rewrite(rw_execution, execution_tree[3], [](const xml_node& node) { return rewrite_configuration(node); });
 
@@ -305,10 +309,10 @@ rewrite_plugin(const xml_node& node) {
   assert(node.name == "plugin" && !node.content && node.tree() && node.tree()->node_cnt() <= 5);
 
   const vector<const xml_node*> plugin_tree{node.tree()->find_in(vector<const char*>{"groupId", "artifactId", "version", "configuration", "executions"})};
-  assert(plugin_tree.size() == 5 && plugin_tree[0] && plugin_tree[1]);
+  assert(plugin_tree.size() == 5 && plugin_tree[1]);
 
   xml_node rw_plugin{node.lineno, node.level, node.name, node.comment.get()};
-  rw_plugin.add_subnode(rewrite_group_id(*plugin_tree[0]));
+  add_nonempty_rewrite(rw_plugin, plugin_tree[0], [](const xml_node& node) { return rewrite_group_id(node); });
   rw_plugin.add_subnode(rewrite_artifact_id(*plugin_tree[1]));
   add_nonempty_rewrite(rw_plugin, plugin_tree[2], [](const xml_node& node) { return rewrite_version(node); });
   add_nonempty_rewrite(rw_plugin, plugin_tree[3], [](const xml_node& node) { return rewrite_configuration(node); });
@@ -330,15 +334,68 @@ rewrite_plugin_management(const xml_node& node) {
 }
 
 xml_node
-rewrite_build(const xml_node& node) {
-  assert(node.name == "build" && !node.content && node.tree() && node.tree()->node_cnt() <= 2);
+rewrite_filtering(const xml_node& node) {
+  assert(node.content && !node.tree());
+  return xml_node{node};
+}
 
-  const vector<const xml_node*> build_tree{node.tree()->find_in({"pluginManagement", "plugins"})};
-  assert(build_tree.size() == 2);
+xml_node
+rewrite_include(const xml_node& node) {
+  assert(node.name == "include" && node.content && !node.tree());
+  return xml_node{node};
+}
+
+xml_node
+rewrite_includes(const xml_node& node) {
+  assert(!node.content);
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_include(node); });
+}
+
+xml_node
+rewrite_exclude(const xml_node& node) {
+  assert(node.name == "exclude" && node.content && !node.tree());
+  return xml_node{node};
+}
+
+xml_node
+rewrite_excludes(const xml_node& node) {
+  assert(!node.content);
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_exclude(node); });
+}
+
+xml_node
+rewrite_resource(const xml_node& node) {
+  assert(node.name == "resource" && !node.content && node.tree() && node.tree()->node_cnt() <= 4);
+
+  const vector<const xml_node*> resource_tree{node.tree()->find_in(vector<const char*>{"directory", "filtering", "includes", "excludes"})};
+  assert(resource_tree.size() == 4 && resource_tree[0]);
+
+  xml_node rw_resource{node.lineno, node.level, node.name, node.comment.get()};
+  rw_resource.add_subnode(rewrite_artifact_id(*resource_tree[0]));
+  add_nonempty_rewrite(rw_resource, resource_tree[1], [](const xml_node& node) { return rewrite_filtering(node); });
+  add_nonempty_rewrite(rw_resource, resource_tree[2], [](const xml_node& node) { return rewrite_includes(node); });
+  add_nonempty_rewrite(rw_resource, resource_tree[3], [](const xml_node& node) { return rewrite_excludes(node); });
+
+  return rw_resource;
+}
+
+xml_node
+rewrite_resources(const xml_node& node) {
+  assert(!node.content && node.tree());
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_resource(node); });
+}
+
+xml_node
+rewrite_build(const xml_node& node) {
+  assert(node.name == "build" && !node.content && node.tree() && node.tree()->node_cnt() <= 3);
+
+  const vector<const xml_node*> build_tree{node.tree()->find_in({"pluginManagement", "plugins", "resources"})};
+  assert(build_tree.size() == 3);
 
   xml_node rw_build{node.lineno, node.level, node.name, node.comment.get()};
   add_nonempty_rewrite(rw_build, build_tree[0], [](const xml_node& node) { return rewrite_plugin_management(node); });
   add_nonempty_rewrite(rw_build, build_tree[1], [](const xml_node& node) { return rewrite_plugins(node); });
+  add_nonempty_rewrite(rw_build, build_tree[2], [](const xml_node& node) { return rewrite_resources(node); });
 
   return rw_build;
 }
@@ -382,12 +439,12 @@ rewrite_project(const xml_node& node) {
   assert(!node.content && node.tree() && node.tree()->node_cnt() <= 15);
 
   const vector<const xml_node*> project_tree{node.tree()->find_in({"modelVersion", "parent", "groupId", "artifactId", "version", "packaging", "properties", "scm", "distributionManagement", "dependencyManagement", "dependencies", "build", "modules", "profiles", "activeProfiles"})};
-  assert(project_tree.size() == 15 && project_tree[0] && project_tree[2] && project_tree[3]);
+  assert(project_tree.size() == 15 && project_tree[0] && project_tree[3]);
 
   xml_node rw_project{node.lineno, node.level, node.name, node.comment.get()};
   rw_project.add_subnode(rewrite_model_version(*project_tree[0]));
   add_nonempty_rewrite(rw_project, project_tree[1], [](const xml_node& node) { return rewrite_parent(node); });
-  rw_project.add_subnode(rewrite_group_id(*project_tree[2]));
+  add_nonempty_rewrite(rw_project, project_tree[2], [](const xml_node& node) { return rewrite_group_id(node); });
   rw_project.add_subnode(rewrite_artifact_id(*project_tree[3]));
   add_nonempty_rewrite(rw_project, project_tree[4], [](const xml_node& node) { return rewrite_version(node); });
   add_nonempty_rewrite(rw_project, project_tree[5], [](const xml_node& node) { return rewrite_packaging(node); });

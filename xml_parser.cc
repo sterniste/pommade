@@ -57,9 +57,13 @@ basic_xml_doc_handler::handle_content(const Locator& locator, const XMLCh* const
   if (nl_cnt < 0) {
     assert(!node_path.empty());
     auto* const nodep = nodep_stack.top();
-    assert(!nodep->content && !nodep->tree());
-    nodep->content.reset(new xmlstring{content});
-    node_comment.reset();
+    assert(!nodep->tree());
+    if (nodep->content)
+      nodep->content->append(xmlstring{content});
+    else {
+      nodep->content.reset(new xmlstring{content});
+      node_comment.reset();
+    }
   }
 }
 
