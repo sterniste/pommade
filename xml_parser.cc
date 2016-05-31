@@ -9,14 +9,20 @@
 #include <xercesc/sax/Locator.hpp>
 #include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/sax2/Attributes.hpp>
+#include <xercesc/sax2/DefaultHandler.hpp>
+#include <xercesc/sax2/SAX2XMLReader.hpp>
+#include <xercesc/sax2/XMLReaderFactory.hpp>
+#include <xercesc/util/PlatformUtils.hpp>
 #include <xercesc/util/XMLString.hpp>
+#include <xercesc/util/XMLUni.hpp>
 
-#include "xml_parser.h"
 #include "xml_graph.h"
+#include "xml_parser.h"
 
 namespace xml_parser {
 using namespace std;
-    using namespace xml_graph;
+using namespace xml_graph;
+using namespace xml_parser;  
 using namespace xercesc_3_1;
 
 xmlstring::xmlstring(const XMLCh* buf) {
@@ -33,7 +39,7 @@ xmlstring::xmlstring(const XMLCh* buf, XMLSize_t len) {
 }
 
 int
-xml_handler::ignorable_newlines(const string& content) {
+basic_xml_doc_handler::ignorable_newlines(const string& content) {
   unsigned int nl_cnt{};
   for (const auto c : content) {
     if (!isspace(c))
@@ -45,7 +51,7 @@ xml_handler::ignorable_newlines(const string& content) {
 }
 
 void
-xml_handler::characters(const XMLCh* const buf, const XMLSize_t len) {
+basic_xml_doc_handler::handle_content(const Locator& locator, const XMLCh* const buf, const XMLSize_t len) {
   const xmlstring content{buf, len};
   const int nl_cnt{ignorable_newlines(content)};
   if (nl_cnt < 0) {
@@ -58,25 +64,25 @@ xml_handler::characters(const XMLCh* const buf, const XMLSize_t len) {
 }
 
 void
-xml_handler::endDocument() {
+basic_xml_doc_handler::handle_end_document(const Locator& locator) {
   assert(node_path.empty() && nodep_stack.empty());
   if (node_comment) {
-    cerr << "discarding comment before document end; line " << locator->getLineNumber() << endl;
+    cerr << "discarding comment before document end; line " << locator.getLineNumber() << endl;
     node_comment.reset();
   }
   assert(root_node);
 }
 
 void
-xml_handler::startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const Attributes& attrs) {
+basic_xml_doc_handler::handle_start_element(const Locator& locator, const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const Attributes& attrs) {
   xml_node* nodep{};
   if (!root_node) {
     assert(nodep_stack.empty());
-    root_node.reset(new xml_node{locator->getLineNumber(), 0, xmlstring{qname}, node_comment.get()});
+    root_node.reset(new xml_node{locator.getLineNumber(), 0, xmlstring{qname}, node_comment.get()});
     nodep = root_node.get();
   } else {
     assert(!nodep_stack.empty() && !nodep_stack.top()->content);
-    nodep = nodep_stack.top()->add_subnode(xml_node{locator->getLineNumber(), nodep_stack.top()->level + 1, xmlstring{qname}, node_comment.get()});
+    nodep = nodep_stack.top()->add_subnode(xml_node{locator.getLineNumber(), nodep_stack.top()->level + 1, xmlstring{qname}, node_comment.get()});
   }
   node_comment.reset();
   nodep_stack.push(nodep);
@@ -85,11 +91,11 @@ xml_handler::startElement(const XMLCh* const uri, const XMLCh* const localname, 
 }
 
 void
-xml_handler::endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname) {
+basic_xml_doc_handler::handle_end_element(const Locator& locator, const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname) {
   const string::size_type pos{node_path.rfind('/')};
   assert(pos != string::npos && xmlstring{qname} == node_path.substr(pos + 1));
   if (node_comment) {
-    cerr << "discarding comment before '" + node_path + "' end; line " << locator->getLineNumber() << endl;
+    cerr << "discarding comment before '" + node_path + "' end; line " << locator.getLineNumber() << endl;
     node_comment.reset();
   }
 
@@ -100,25 +106,68 @@ xml_handler::endElement(const XMLCh* const uri, const XMLCh* const localname, co
 }
 
 void
-xml_handler::comment(const XMLCh* const buf, const XMLSize_t len) {
+basic_xml_doc_handler::handle_comment(const Locator& locator, const XMLCh* const buf, const XMLSize_t len) {
   node_comment.reset(new xmlstring{buf, len});
 }
 
 void
-xml_handler::processingInstruction(const XMLCh* const target, const XMLCh* const data) {}
+basic_xml_doc_handler::handle_processing_instruction(const Locator& locator, const XMLCh* const target, const XMLCh* const data) {}
 
 void
-xml_handler::error(const SAXParseException& e) {
+basic_xml_doc_handler::handle_error(const SAXParseException& e) {
   cerr << "error at file " << xmlstring{e.getSystemId()} << ", line " << e.getLineNumber() << ", col " << e.getColumnNumber() << ": " << xmlstring{e.getMessage()} << endl;
 }
 
 void
-xml_handler::fatalError(const SAXParseException& e) {
+basic_xml_doc_handler::handle_fatal_error(const SAXParseException& e) {
   cerr << "fatal error at file " << xmlstring{e.getSystemId()} << ", line " << e.getLineNumber() << ", col " << e.getColumnNumber() << ": " << xmlstring{e.getMessage()} << endl;
 }
 
 void
-xml_handler::warning(const SAXParseException& e) {
+basic_xml_doc_handler::handle_warning(const SAXParseException& e) {
   cerr << "warning at file " << xmlstring{e.getSystemId()} << ", line " << e.getLineNumber() << ", col " << e.getColumnNumber() << ": " << xmlstring{e.getMessage()} << endl;
+}
+
+xml_doc_parser::~xml_doc_parser() {
+  XMLPlatformUtils::Terminate();
+}
+
+xml_doc_parser::xml_doc_parser(xml_doc_handler& doc_handler) : doc_handler(doc_handler) {
+  XMLPlatformUtils::Initialize();
+}
+
+class xml_doc_delegator : public DefaultHandler {
+  xml_doc_handler& doc_handler;
+  const Locator* locator;
+
+  void characters(const XMLCh* const buf, const XMLSize_t len) override { doc_handler.handle_content(*locator, buf, len); }
+  void endDocument() override { doc_handler.handle_end_document(*locator); }
+  void startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const Attributes& attrs) override { doc_handler.handle_start_element(*locator, uri, localname, qname, attrs); }
+  void endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname) override { doc_handler.handle_end_element(*locator, uri, localname, qname); }
+  void comment(const XMLCh* const buf, const XMLSize_t cnt) override { doc_handler.handle_comment(*locator, buf, cnt); }
+  void processingInstruction(const XMLCh* const target, const XMLCh* const data) override { doc_handler.handle_processing_instruction(*locator, target, data); }
+  void warning(const SAXParseException& e) override { doc_handler.handle_warning(e); }
+  void error(const SAXParseException& e) override { doc_handler.handle_error(e); }
+  void fatalError(const SAXParseException& e) override { doc_handler.handle_fatal_error(e); }
+
+  void setDocumentLocator(const Locator* locator) override { this->locator = locator; }
+
+ public:
+  xml_doc_delegator(xml_doc_handler& doc_handler) : doc_handler{doc_handler}, locator{} {}
+};
+
+unique_ptr<const xml_node>  
+xml_doc_parser::parse_doc(const char* file) {
+  unique_ptr<SAX2XMLReader> parser{XMLReaderFactory::createXMLReader()};
+  parser->setFeature(XMLUni::fgSAX2CoreValidation, false);
+  parser->setFeature(XMLUni::fgSAX2CoreNameSpaces, false);
+
+  xml_doc_delegator doc_delegator{doc_handler};
+  parser->setContentHandler(&doc_delegator);
+  parser->setErrorHandler(&doc_delegator);
+  parser->setLexicalHandler(&doc_delegator);
+
+  parser->parse(file);
+  return doc_handler.doc();
 }
 }

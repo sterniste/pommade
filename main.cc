@@ -1,13 +1,8 @@
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 
 #include <xercesc/sax/SAXParseException.hpp>
-#include <xercesc/sax2/SAX2XMLReader.hpp>
-#include <xercesc/sax2/XMLReaderFactory.hpp>
-#include <xercesc/util/PlatformUtils.hpp>
 #include <xercesc/util/XMLException.hpp>
-#include <xercesc/util/XMLUni.hpp>
 
 #include "rewrite_pom.h"
 #include "xml_graph.h"
@@ -23,20 +18,11 @@ using namespace xercesc_3_1;
 
 int
 main(int argc, const char* argv[]) {
-  XMLPlatformUtils::Initialize();
   try {
-    unique_ptr<SAX2XMLReader> parser{XMLReaderFactory::createXMLReader()};
-    parser->setFeature(XMLUni::fgSAX2CoreValidation, false);
-    parser->setFeature(XMLUni::fgSAX2CoreNameSpaces, false);
-
-    xml_handler handler;
-    parser->setContentHandler(&handler);
-    parser->setErrorHandler(&handler);
-    parser->setLexicalHandler(&handler);
-
-    parser->parse(argv[1]);
-    const unique_ptr<const xml_node> root_node{handler.root()};
-    const xml_node rw_pom{rewrite_pom(root_node.get())};
+    basic_xml_doc_handler doc_handler;
+    xml_doc_parser doc_parser{doc_handler};
+    const unique_ptr<const xml_node> doc{doc_parser.parse_doc(argv[1])};
+    const xml_node rw_pom{rewrite_pom(doc.get())};
     cout << rw_pom;
   } catch (const XMLException& e) {
     cout << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
@@ -48,5 +34,4 @@ main(int argc, const char* argv[]) {
     cout << "caught exception" << endl;
     return 1;
   }
-  XMLPlatformUtils::Terminate();
 }

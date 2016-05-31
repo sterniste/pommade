@@ -146,7 +146,7 @@ rewrite_scope(const xml_node& node) {
 
 xml_node
 rewrite_dependency(const xml_node& node) {
-  assert(node.name == "dependency" && !node.content && node.tree());
+  assert(node.name == "dependency" && !node.content && node.tree() && node.tree()->node_cnt() <= 5);
 
   const vector<const xml_node*> dependency_tree{node.tree()->find_in(vector<const char*>{"groupId", "artifactId", "version", "packaging", "scope"})};
   assert(dependency_tree.size() == 5 && dependency_tree[0] && dependency_tree[1]);
