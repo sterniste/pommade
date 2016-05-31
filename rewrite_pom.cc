@@ -22,22 +22,23 @@ add_nonempty_rewrite(xml_node& node, const xml_node* subnode, xml_node (*rewrite
 }
 
 xml_node
-rewrite_all_subnodes(const xml_node& node, xml_node (*rewrite)(const xml_node&)) {
+rewrite_subnodes(const xml_node& node, xml_node (*rewrite)(const xml_node&)) {
   xml_node rw_node{node.lineno, node.level, node.name, node.comment.get()};
-  vector<xml_node> subnodes;
   for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
     rw_node.add_subnode(rewrite(*cit));
   return rw_node;
 }
 
-void
-add_sorted_rewrites(const xml_node& node, xml_node& rw_node, xml_node (*rewrite)(const xml_node&), bool (*compare)(const xml_node& a, const xml_node& b)) {
+xml_node
+rewrite_sorted_subnodes(const xml_node& node, xml_node (*rewrite)(const xml_node&), bool (*compare)(const xml_node& a, const xml_node& b)) {
+  xml_node rw_node{node.lineno, node.level, node.name, node.comment.get()};
   vector<xml_node> subnodes;
   for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
     subnodes.push_back(rewrite(*cit));
   sort(subnodes.begin(), subnodes.end(), compare);
   for (auto&& subnode : subnodes)
     rw_node.add_subnode(move(subnode));
+  return rw_node;
 }
 
 xml_node
@@ -107,13 +108,7 @@ rewrite_project_property(const xml_node& node) {
 xml_node
 rewrite_project_properties(const xml_node& node) {
   assert(!node.content);
-
-  xml_node rw_properties{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_properties;
-  add_sorted_rewrites(node, rw_properties, [](const xml_node& node) { return rewrite_project_property(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
-
-  return rw_properties;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_project_property(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
 }
 
 xml_node
@@ -125,13 +120,7 @@ rewrite_scm_element(const xml_node& node) {
 xml_node
 rewrite_scm(const xml_node& node) {
   assert(!node.content);
-
-  xml_node rw_scm{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_scm;
-  add_sorted_rewrites(node, rw_scm, [](const xml_node& node) { return rewrite_scm_element(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
-
-  return rw_scm;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_scm_element(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
 }
 
 xml_node
@@ -143,13 +132,7 @@ rewrite_distribution_management_element(const xml_node& node) {
 xml_node
 rewrite_distribution_management(const xml_node& node) {
   assert(!node.content);
-
-  xml_node rw_distribution_management{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_distribution_management;
-  add_sorted_rewrites(node, rw_distribution_management, [](const xml_node& node) { return rewrite_distribution_management_element(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
-
-  return rw_distribution_management;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_distribution_management_element(node); }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
 }
 
 xml_node
@@ -178,21 +161,15 @@ rewrite_dependency(const xml_node& node) {
 xml_node
 rewrite_dependencies(const xml_node& node) {
   assert(node.name == "dependencies" && !node.content);
-
-  xml_node rw_dependencies{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_dependencies;
-  add_sorted_rewrites(node, rw_dependencies, [](const xml_node& node) { return rewrite_dependency(node); },
-                      [](const xml_node& a, const xml_node& b) {
-                        auto a_cit = a.tree()->cbegin(), b_cit = b.tree()->cbegin();
-                        if (*a_cit->content < *b_cit->content)
-                          return true;
-                        if (*a_cit->content == *b_cit->content)
-                          return *(++a_cit)->content < *(++b_cit)->content;
-                        return false;
-                      });
-
-  return rw_dependencies;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_dependency(node); },
+                                 [](const xml_node& a, const xml_node& b) {
+                                   auto a_cit = a.tree()->cbegin(), b_cit = b.tree()->cbegin();
+                                   if (*a_cit->content < *b_cit->content)
+                                     return true;
+                                   if (*a_cit->content == *b_cit->content)
+                                     return *(++a_cit)->content < *(++b_cit)->content;
+                                   return false;
+                                 });
 }
 
 xml_node
@@ -217,7 +194,7 @@ rewrite_module(const xml_node& node) {
 xml_node
 rewrite_modules(const xml_node& node) {
   assert(!node.content && node.tree());
-  return rewrite_all_subnodes(node, [](const xml_node& node) { return rewrite_module(node); });
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_module(node); });
 }
 
 xml_node
@@ -264,37 +241,23 @@ rewrite_property(const xml_node& node, bool unvalued_ok = false) {
 xml_node
 rewrite_properties(const xml_node& node) {
   assert(!node.content && node.tree());
-
-  xml_node rw_properties{node.lineno, node.level, node.name, node.comment.get()};
-  add_sorted_rewrites(node, rw_properties, [](const xml_node& node) { return rewrite_property(node); },
-                      [](const xml_node& a, const xml_node& b) {
-                        auto a_cit = a.tree()->cbegin(), b_cit = b.tree()->cbegin();
-                        return *a_cit->content < *b_cit->content;
-                      });
-
-  return rw_properties;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_property(node); },
+                                 [](const xml_node& a, const xml_node& b) {
+                                   auto a_cit = a.tree()->cbegin(), b_cit = b.tree()->cbegin();
+                                   return *a_cit->content < *b_cit->content;
+                                 });
 }
 
 xml_node
 rewrite_activation(const xml_node& node) {
-  assert(!node.content);
-  
-  xml_node rw_activation{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_activation;
-  add_sorted_rewrites(node, rw_activation, [](const xml_node& node) { return node.name == "property" ? rewrite_property(node, true) : xml_node{node}; }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
-
-  return rw_activation;
+  assert(!node.content && node.tree());
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return node.name == "property" ? rewrite_property(node, true) : xml_node{node}; }, [](const xml_node& a, const xml_node& b) { return a.name < b.name; });
 }
 
 xml_node
 rewrite_configuration(const xml_node& node) {
   assert(!node.content && node.tree());
-
-  xml_node rw_configuration{node.lineno, node.level, node.name, node.comment.get()};
-  add_sorted_rewrites(node, rw_configuration, [](const xml_node& node) { return node.name == "properties" ? rewrite_properties(node) : xml_node{node}; }, [](const xml_node& a, const xml_node& b) { return a.name == "properties" || a.name < b.name; });
-
-  return rw_configuration;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return node.name == "properties" ? rewrite_properties(node) : xml_node{node}; }, [](const xml_node& a, const xml_node& b) { return a.name == "properties" || a.name < b.name; });
 }
 
 xml_node
@@ -312,7 +275,7 @@ rewrite_goal(const xml_node& node) {
 xml_node
 rewrite_goals(const xml_node& node) {
   assert(!node.content && node.tree());
-  return rewrite_all_subnodes(node, [](const xml_node& node) { return rewrite_goal(node); });
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_goal(node); });
 }
 
 xml_node
@@ -334,7 +297,7 @@ rewrite_execution(const xml_node& node) {
 xml_node
 rewrite_executions(const xml_node& node) {
   assert(!node.content && node.tree());
-  return rewrite_all_subnodes(node, [](const xml_node& node) { return rewrite_execution(node); });
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_execution(node); });
 }
 
 xml_node
@@ -357,28 +320,13 @@ rewrite_plugin(const xml_node& node) {
 xml_node
 rewrite_plugins(const xml_node& node) {
   assert(node.name == "plugins" && !node.content);
-
-  xml_node rw_plugins{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_plugins;
-
-  for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
-    rw_plugins.add_subnode(rewrite_plugin(*cit));
-
-  return rw_plugins;
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_plugin(node); });
 }
 
 xml_node
 rewrite_plugin_management(const xml_node& node) {
-  assert(!node.content);
-
-  xml_node rw_plugin_management{node.lineno, node.level, node.name, node.comment.get()};
-  if (!node.tree())
-    return rw_plugin_management;
-
-  rw_plugin_management.add_subnode(rewrite_plugins(*node.tree()->cbegin()));
-
-  return rw_plugin_management;
+  assert(!node.content && node.tree() && node.tree()->node_cnt() == 1);
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_plugins(node); });
 }
 
 xml_node
@@ -414,7 +362,7 @@ rewrite_profile(const xml_node& node) {
 xml_node
 rewrite_profiles(const xml_node& node) {
   assert(!node.content);
-  return rewrite_all_subnodes(node, [](const xml_node& node) { return rewrite_profile(node); });
+  return rewrite_subnodes(node, [](const xml_node& node) { return rewrite_profile(node); });
 }
 
 xml_node
@@ -426,11 +374,7 @@ rewrite_active_profile(const xml_node& node) {
 xml_node
 rewrite_active_profiles(const xml_node& node) {
   assert(!node.content && node.tree());
-
-  xml_node rw_active_profiles{node.lineno, node.level, node.name, node.comment.get()};
-  add_sorted_rewrites(node, rw_active_profiles, [](const xml_node& node) { return rewrite_active_profile(node); }, [](const xml_node& a, const xml_node& b) { return *a.content < *b.content; });
-
-  return rw_active_profiles;
+  return rewrite_sorted_subnodes(node, [](const xml_node& node) { return rewrite_active_profile(node); }, [](const xml_node& a, const xml_node& b) { return *a.content < *b.content; });
 }
 
 xml_node
