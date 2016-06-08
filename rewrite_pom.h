@@ -2,71 +2,109 @@
 #define REWRITE_POM_H
 
 #include <functional>
+#include <unordered_map>
 
-namespace xml_graph {
-class xml_node;
-}
+#include "xml_graph.h"
 
 namespace pommade {
 
-class pom_rewriter {
+using rw_key = unsigned short int;
+
+using rw_with_flag = unsigned short int;
+
+struct rw_with_flag_key {
+  struct hasher {
+    std::size_t operator()(const rw_with_flag_key& key) const { return std::hash<unsigned int>()(key.i + static_cast<unsigned int>(key.flag << 16)); }
+  };
+
+  rw_with_flag i;
+  bool flag;
+
+  rw_with_flag_key(rw_with_flag i, bool flag) : i{i}, flag{flag} {}
+
+  bool operator==(const rw_with_flag_key& that) const { return i == that.i && flag == that.flag; }
+};
+
+using lt_key = unsigned short int;
+
+struct pom_rewriter_fns {
+  const std::function<xml_graph::xml_node(const xml_graph::xml_node&)> copy_node_fn{[](const xml_graph::xml_node& node) { return xml_graph::xml_node{node}; }};
+
+  enum rw_keys { rw_model_version = 0, rw_group_id, rw_artifact_id, rw_parent_version, rw_relative_path, rw_parent, rw_version, rw_packaging, rw_project_property, rw_project_properties, rw_scm_element, rw_scm, rw_distribution_management_element, rw_distribution_management, rw_scope, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_module, rw_modules, rw_id, rw_name, rw_value, rw_properties, rw_active_by_default, rw_activation, rw_configuration, rw_phase, rw_goal, rw_goals, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_filtering, rw_include, rw_includes, rw_exclude, rw_excludes, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profile, rw_active_profiles };
+  std::unordered_map<rw_key, std::function<xml_graph::xml_node(const xml_graph::xml_node&)>> rws_fn_map;
+
+  enum rw_with_flags { rw_with_flag_property = 0 };
+  std::unordered_map<rw_with_flag_key, std::function<xml_graph::xml_node(const xml_graph::xml_node&)>, rw_with_flag_key::hasher> rws_with_flag_fn_map;
+
+  enum lt_keys { lt_exclusion = 0, lt_dependency };
+  std::unordered_map<lt_key, std::function<bool(std::unique_ptr<const xml_graph::xml_node>&, std::unique_ptr<const xml_graph::xml_node>&)>> lts_fn_map;
+};
+
+class pom_rewriter : private pom_rewriter_fns {
   bool has_parent;
+  
+  const std::function<xml_graph::xml_node(const xml_graph::xml_node&)>& get_rw_fn(rw_key key);
+  const std::function<xml_graph::xml_node(const xml_graph::xml_node&)>& get_rw_with_flag_fn(rw_with_flag_key key);
+  const std::function<bool(std::unique_ptr<const xml_graph::xml_node>&, std::unique_ptr<const xml_graph::xml_node>&)>& get_lt_fn(lt_key key);
 
-  static std::function<xml_graph::xml_node(pom_rewriter*, const xml_graph::xml_node&)> rewrite_for(xml_graph::xml_node (pom_rewriter::*rewrite)(const xml_graph::xml_node &));
-  static std::function<xml_graph::xml_node(pom_rewriter*, const xml_graph::xml_node&)> rewrite_with_flag_for(xml_graph::xml_node (pom_rewriter::*rewrite_with_flag)(const xml_graph::xml_node&, bool flag), bool flag);
+  bool add_nonempty_rewrite_node(xml_graph::xml_node& node, const xml_graph::xml_node* subnode, const std::function<xml_graph::xml_node(const xml_graph::xml_node&)>& rw_fn);
+  xml_graph::xml_node rewrite_subnodes(const xml_graph::xml_node& node, const std::function<xml_graph::xml_node(const xml_graph::xml_node&)>& rw_fn);
+  xml_graph::xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, const std::function<xml_graph::xml_node(const xml_graph::xml_node&)>& rw_fn, const std::function<bool(std::unique_ptr<const xml_graph::xml_node>&, std::unique_ptr<const xml_graph::xml_node>&)>& lt_fn);
 
-  void add_nonempty_rewrite(xml_graph::xml_node& node, const xml_graph::xml_node* subnode, xml_graph::xml_node (*rewrite)(pom_rewriter* self, const xml_graph::xml_node&));
-  xml_graph::xml_node rewrite_subnodes(const xml_graph::xml_node& node, xml_graph::xml_node (*rewrite)(pom_rewriter* self, const xml_graph::xml_node&));
-  xml_graph::xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, xml_graph::xml_node (*rewrite)(pom_rewriter* self, const xml_graph::xml_node&), bool (*compare)(const xml_graph::xml_node& a, const xml_graph::xml_node& b));
+  xml_graph::xml_node rewrite_model_version_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_group_id_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_artifact_id_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_parent_version_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_relative_path_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_parent_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_version_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_packaging_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_project_property_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_project_properties_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_scm_element_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_scm_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_distribution_management_element_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_distribution_management_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_scope_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_exclusion_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_exclusions_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_dependency_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_dependencies_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_dependency_management_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_module_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_modules_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_id_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_name_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_value_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_property_node(const xml_graph::xml_node& node, bool unvalued_ok = false);
+  xml_graph::xml_node rewrite_properties_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_active_by_default_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_activation_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_configuration_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_phase_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_goal_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_goals_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_execution_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_executions_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_plugin_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_plugins_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_plugin_management_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_filtering_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_include_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_includes_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_exclude_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_excludes_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_resource_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_resources_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_build_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_profile_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_profiles_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_active_profile_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_active_profiles_node(const xml_graph::xml_node& node);
+  xml_graph::xml_node rewrite_project_node(const xml_graph::xml_node& node);
 
-  xml_graph::xml_node rewrite_model_version(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_group_id(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_artifact_id(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_parent_version(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_relative_path(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_parent(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_version(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_packaging(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_project_property(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_project_properties(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_scm_element(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_scm(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_distribution_management_element(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_distribution_management(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_scope(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_dependency(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_dependencies(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_dependency_management(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_module(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_modules(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_id(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_name(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_value(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_property(const xml_graph::xml_node& node, bool unvalued_ok = false);
-  xml_graph::xml_node rewrite_properties(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_activation(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_configuration(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_phase(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_goal(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_goals(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_execution(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_executions(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_plugin(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_plugins(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_plugin_management(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_filtering(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_include(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_includes(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_exclude(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_excludes(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_resource(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_resources(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_build(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_profile(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_profiles(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_active_profile(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_active_profiles(const xml_graph::xml_node& node);
-  xml_graph::xml_node rewrite_project(const xml_graph::xml_node& node);
+  bool lt_exclusion_nodes(std::unique_ptr<const xml_graph::xml_node>& a, std::unique_ptr<const xml_graph::xml_node>& b) const;
+  bool lt_dependency_nodes(std::unique_ptr<const xml_graph::xml_node>& a, std::unique_ptr<const xml_graph::xml_node>& b) const;
 
  public:
   pom_rewriter() : has_parent{} {}

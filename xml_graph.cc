@@ -11,22 +11,18 @@ using namespace std;
 
 xml_node::xml_node(const xml_node& that) : lineno{that.lineno}, level{that.level}, name{that.name}, comment{that.comment ? new string{*that.comment} : nullptr}, content{that.content ? new string{*that.content} : nullptr}, subtree{that.subtree ? new xml_tree{*that.subtree} : nullptr} {}
 
-xml_node&
-xml_node::operator=(const xml_node& that) {
-  lineno = that.lineno;
-  level = that.level;
-  name = that.name;
-  comment = move(unique_ptr<string>{that.comment ? new string{*that.comment} : nullptr});
-  content = move(unique_ptr<string>{that.content ? new string{*that.content} : nullptr});
-  subtree = move(unique_ptr<xml_tree>{that.subtree ? new xml_tree{*that.subtree} : nullptr});
-  return *this;
-}
-
 xml_node*
 xml_node::add_subnode(xml_node&& subnode) {
   if (!subtree)
     subtree.reset(new xml_tree{});
   return subtree->add_node(move(subnode));
+}
+
+void
+xml_node::add_subnodes(vector<unique_ptr<const xml_node>>&& subnodes) {
+  if (!subtree)
+    subtree.reset(new xml_tree{});
+  return subtree->add_nodes(move(subnodes));
 }
 
 ostream& operator<<(ostream& os, const xml_node& node) {
@@ -50,10 +46,17 @@ ostream& operator<<(ostream& os, const xml_node& node) {
 
 xml_node*
 xml_tree::add_node(xml_node&& node) {
-  if (!names.insert(node.name).second) {
-  }
-  nodes.push_back(unique_ptr<xml_node>{new xml_node{move(node)}});
-  return nodes.crbegin()->get();
+  names.insert(node.name);
+  xml_node* nodep{};
+  nodes.push_back(unique_ptr<const xml_node>{nodep = new xml_node{move(node)}});
+  return nodep;
+}
+
+void
+xml_tree::add_nodes(vector<unique_ptr<const xml_node>>&& nodes) {
+  for (const auto& node : nodes)
+    names.insert(node->name);
+  move(nodes.begin(), nodes.end(), back_inserter(this->nodes));
 }
 
 vector<const xml_node*>

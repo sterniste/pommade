@@ -58,10 +58,10 @@ basic_xml_doc_handler::handle_content(const Locator& locator, const XMLCh* const
     assert(!node_path.empty());
     auto* const nodep = nodep_stack.top();
     assert(!nodep->tree());
-    if (nodep->content)
-      nodep->content->append(xmlstring{content});
+    if (nodep->get_content())
+      nodep->append_content(xmlstring{content});
     else {
-      nodep->content.reset(new xmlstring{content});
+      nodep->set_content(xmlstring{content});
       node_comment.reset();
     }
   }
@@ -85,7 +85,7 @@ basic_xml_doc_handler::handle_start_element(const Locator& locator, const XMLCh*
     root_node.reset(new xml_node{locator.getLineNumber(), 0, xmlstring{qname}, node_comment.get()});
     nodep = root_node.get();
   } else {
-    assert(!nodep_stack.empty() && !nodep_stack.top()->content);
+    assert(!nodep_stack.empty() && !nodep_stack.top()->get_content());
     nodep = nodep_stack.top()->add_subnode(xml_node{locator.getLineNumber(), nodep_stack.top()->level + 1, xmlstring{qname}, node_comment.get()});
   }
   node_comment.reset();
