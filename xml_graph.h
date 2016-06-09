@@ -1,7 +1,6 @@
 #ifndef XML_GRAPH_H
 #define XML_GRAPH_H
 
-#include <iosfwd>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -15,8 +14,8 @@ template <typename Node> std::ostream& operator<<(std::ostream& os, const xml_tr
 
 template <typename Node> class basic_xml_node {
  public:
-  const unsigned int lineno;
-  const unsigned int level;
+  const unsigned short lineno;
+  const unsigned short level;
   const std::string name;
   const std::unique_ptr<const std::string> comment;
 
@@ -26,7 +25,7 @@ template <typename Node> class basic_xml_node {
 
  public:
   basic_xml_node(const basic_xml_node& that) : lineno{that.lineno}, level{that.level}, name{that.name}, comment{that.comment ? new std::string{*that.comment} : nullptr}, content{that.content ? new std::string{*that.content} : nullptr}, subtree{that.subtree ? new xml_tree<Node>{*that.subtree} : nullptr} {}
-  basic_xml_node(unsigned int lineno, unsigned int level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : lineno{lineno}, level{level}, name{name}, comment{comment ? new std::string{*comment} : nullptr}, content{content ? new std::string{*content} : nullptr} {}
+  basic_xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : lineno{lineno}, level{level}, name{name}, comment{comment ? new std::string{*comment} : nullptr}, content{content ? new std::string{*content} : nullptr} {}
 
   bool operator==(const basic_xml_node& that) const { return level == that.level && name == that.name; }
   bool operator<(const basic_xml_node& that) const { return level < that.level || (level == that.level && name < that.name); }
@@ -78,7 +77,7 @@ basic_xml_node<Node>::add_subnodes(std::vector<std::unique_ptr<const Node>>&& su
 // TODO: is this necessary?
 struct xml_node : public basic_xml_node<xml_node> {
   xml_node(const xml_node& that) : basic_xml_node{that} {}
-  xml_node(unsigned int lineno, unsigned int level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : basic_xml_node{lineno, level, name, comment, content} {}
+  xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : basic_xml_node{lineno, level, name, comment, content} {}
 };
 
 template <typename Node> class xml_tree_iterator {

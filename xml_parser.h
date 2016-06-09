@@ -74,7 +74,7 @@ template <typename Node> class basic_default_xml_doc_handler : public basic_xml_
 template <typename Node>
 int
 basic_default_xml_doc_handler<Node>::ignorable_newlines(const std::string& content) {
-  unsigned int nl_cnt{};
+  int nl_cnt{};
   for (const auto c : content) {
     if (!isspace(c))
       return -1;
@@ -119,11 +119,11 @@ basic_default_xml_doc_handler<Node>::handle_start_element(const xercesc::Locator
   Node* nodep{};
   if (!root_node) {
     assert(nodep_stack.empty());
-    root_node.reset(new Node{static_cast<unsigned int>(locator.getLineNumber()), 0, xmlstring{qname}, node_comment.get()});
+    root_node.reset(new Node{static_cast<unsigned short>(locator.getLineNumber()), 0, xmlstring{qname}, node_comment.get()});
     nodep = root_node.get();
   } else {
     assert(!nodep_stack.empty() && !nodep_stack.top()->get_content());
-    nodep = nodep_stack.top()->add_subnode(Node{static_cast<unsigned int>(locator.getLineNumber()), nodep_stack.top()->level + 1, xmlstring{qname}, node_comment.get()});
+    nodep = nodep_stack.top()->add_subnode(Node{static_cast<unsigned short>(locator.getLineNumber()), static_cast<unsigned short>(nodep_stack.top()->level + 1), xmlstring{qname}, node_comment.get()});
   }
   node_comment.reset();
   nodep_stack.push(nodep);

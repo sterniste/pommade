@@ -22,13 +22,13 @@ main(int argc, const char* argv[]) {
     default_xml_doc_handler doc_handler;
     cout << pom_rewriter{}.rewrite_pom(xml_doc_parser{doc_handler}.parse_doc(argv[1]).get());
   } catch (const XMLException& e) {
-    cout << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
+    cerr << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
     return 1;
   } catch (const SAXParseException& e) {
-    cout << "caught SAXParseException: " << xmlstring{e.getMessage()} << endl;
+    cerr << "caught SAXParseException: " << xmlstring{e.getMessage()} << endl;
     return 1;
   } catch (...) {
-    cout << "caught exception" << endl;
+    cerr << "caught exception" << endl;
     return 1;
   }
 }
