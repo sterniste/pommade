@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <functional>
-#include <iosfwd>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -11,8 +10,6 @@
 #include "xml_graph.h"
 
 namespace pommade {
-
-class pom_xml_node;
 
 struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
   const bool gap_before;

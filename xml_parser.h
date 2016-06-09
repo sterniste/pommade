@@ -11,13 +11,18 @@
 
 #include <xercesc/sax/Locator.hpp>
 #include <xercesc/sax/SAXParseException.hpp>
-#include <xercesc/sax2/Attributes.hpp>
 #include <xercesc/sax2/DefaultHandler.hpp>
 #include <xercesc/sax2/SAX2XMLReader.hpp>
 #include <xercesc/sax2/XMLReaderFactory.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
+#include <xercesc/util/XMLUni.hpp>
 
-#include "xml_graph.h"
+namespace xercesc_3_1 {
+class Attributes;
+}
+namespace xml_graph {
+struct xml_node;
+}
 
 namespace xml_parser {
 

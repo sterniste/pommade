@@ -1,7 +1,6 @@
 #include <string>
 
 #include <xercesc/util/XMLString.hpp>
-#include <xercesc/util/XMLUni.hpp>
 
 #include "xml_parser.h"
 

@@ -1,4 +1,6 @@
 #include <iostream>
+#include <memory>
+#include <string>
 
 #include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/util/XMLException.hpp>
