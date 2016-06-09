@@ -4,6 +4,7 @@
 #include <xercesc/util/XMLException.hpp>
 
 #include "rewrite_pom.h"
+#include "xml_graph.h"
 #include "xml_parser.h"
 
 namespace {
@@ -16,7 +17,7 @@ using namespace xercesc_3_1;
 int
 main(int argc, const char* argv[]) {
   try {
-    basic_xml_doc_handler doc_handler;
+    default_xml_doc_handler doc_handler;
     cout << pom_rewriter{}.rewrite_pom(xml_doc_parser{doc_handler}.parse_doc(argv[1]).get());
   } catch (const XMLException& e) {
     cout << "caught XMLException: " << xmlstring{e.getMessage()} << endl;

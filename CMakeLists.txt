@@ -4,6 +4,16 @@ add_compile_options(-std=c++11 -Wall)
 
 project(pommade CXX)
 
+# iwyu: "include-what-you-use" suggests include/forward declaration optimizations during compilation
+if (BUILD_IWYU)
+  include(cmake/Modules/IWYU.cmake)
+  iwyu_enable()
+  find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+  if (NOT IWYU_PATH)
+    message(FATAL_ERROR "include-what-you-use (iwyu) not found")
+  endif ()
+endif ()
+
 file(GLOB CC_FILES *.cc)
 
 # prefer static to dynamic libraries
