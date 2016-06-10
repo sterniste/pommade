@@ -87,6 +87,7 @@ template <typename Node> class xml_tree_iterator {
   xml_tree_iterator(typename std::vector<std::unique_ptr<const Node>>::const_iterator nodes_it) : nodes_it{nodes_it} {}
 
   xml_tree_iterator operator++();
+  bool operator==(const xml_tree_iterator& that) const { return that.nodes_it == nodes_it; }
   bool operator!=(const xml_tree_iterator& that) const { return that.nodes_it != nodes_it; }
   const Node& operator*() const { return **nodes_it; }
   const Node* operator->() const { return nodes_it->get(); }

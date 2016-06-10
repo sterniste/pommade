@@ -12,7 +12,7 @@
 namespace pommade {
 
 struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
-  const bool gap_before;
+  bool gap_before;
 
   pom_xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{lineno, level, name, comment}, gap_before{gap_before} {}
   pom_xml_node(const xml_graph::xml_node& node, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, (node.comment ? new std::string{*node.comment} : nullptr), node.get_content()}, gap_before{gap_before} {} // TODO
@@ -55,7 +55,7 @@ struct pom_rewriter_fns {
   std::unordered_map<rw_with_flag_key, std::function<pom_xml_node(const xml_graph::xml_node&, bool)>, rw_with_flag_key::hasher> rws_with_flag_fn_map;
 
   enum lt_keys { lt_exclusion = 0, lt_dependency };
-  std::unordered_map<lt_key, std::function<bool(std::unique_ptr<const pom_xml_node>&, std::unique_ptr<const pom_xml_node>&)>> lts_fn_map;
+  std::unordered_map<lt_key, std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>> lts_fn_map;
 };
 
 class pom_rewriter : private pom_rewriter_fns {
@@ -63,11 +63,11 @@ class pom_rewriter : private pom_rewriter_fns {
   
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key);
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key);
-  const std::function<bool(std::unique_ptr<const pom_xml_node>&, std::unique_ptr<const pom_xml_node>&)>& get_lt_fn(lt_key key);
+  const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key);
 
   bool add_nonempty_rewrite_node(pom_xml_node& node, bool gap_before, const xml_graph::xml_node* subnode, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
-  pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
-  pom_xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, bool gap_before, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn, const std::function<bool(std::unique_ptr<const pom_xml_node>&, std::unique_ptr<const pom_xml_node>&)>& lt_fn);
+  pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
+  pom_xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn, const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& lt_fn);
 
   pom_xml_node rewrite_model_version_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_group_id_node(const xml_graph::xml_node& node, bool gap_before);
@@ -121,8 +121,8 @@ class pom_rewriter : private pom_rewriter_fns {
   pom_xml_node rewrite_active_profiles_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_project_node(const xml_graph::xml_node& node);
 
-  bool lt_exclusion_nodes(std::unique_ptr<const pom_xml_node>& a, std::unique_ptr<const pom_xml_node>& b) const;
-  bool lt_dependency_nodes(std::unique_ptr<const pom_xml_node>& a, std::unique_ptr<const pom_xml_node>& b) const;
+  bool lt_exclusion_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
+  bool lt_dependency_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
 
  public:
   pom_rewriter() : has_parent{} {}
