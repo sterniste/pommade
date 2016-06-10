@@ -1,6 +1,7 @@
 #ifndef XML_GRAPH_H
 #define XML_GRAPH_H
 
+#include <iterator>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -131,7 +132,7 @@ void
 xml_tree<Node>::add_nodes(std::vector<std::unique_ptr<const Node>>&& nodes) {
   for (const auto& node : nodes)
     names.insert(node->name);
-  move(nodes.begin(), nodes.end(), back_inserter(this->nodes));
+  std::move(nodes.begin(), nodes.end(), std::back_inserter(this->nodes));
 }
 
 template <typename Node>

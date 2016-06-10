@@ -12,7 +12,7 @@
 namespace pommade {
 
 struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
-  bool gap_before;
+  const bool gap_before;
 
   pom_xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{lineno, level, name, comment}, gap_before{gap_before} {}
   pom_xml_node(const xml_graph::xml_node& node, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, (node.comment ? new std::string{*node.comment} : nullptr), node.get_content()}, gap_before{gap_before} {} // TODO
@@ -35,8 +35,8 @@ struct rw_with_flag_key {
     std::size_t operator()(const rw_with_flag_key& key) const { return std::hash<unsigned int>()(key.i + static_cast<unsigned int>(key.flag << 16)); }
   };
 
-  rw_with_flag i;
-  bool flag;
+  const rw_with_flag i;
+  const bool flag;
 
   rw_with_flag_key(rw_with_flag i, bool flag) : i{i}, flag{flag} {}
 

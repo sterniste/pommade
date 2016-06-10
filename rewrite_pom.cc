@@ -239,13 +239,13 @@ pom_xml_node
 pom_rewriter::rewrite_sort_subnodes(const xml_node& node, bool gap_before, bool gap_before_subnodes, const function<pom_xml_node(const xml_node&, bool)>& rw_fn, const function<bool(const xml_node*, const xml_node*)>& lt_fn) {
   pom_xml_node rw_node{node.lineno, node.level, node.name, node.comment.get(), gap_before};
   if (node.tree()) {
-    vector<const xml_node*> subnodes;
+    vector<const xml_node*> subnodeps;
     for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
-      subnodes.push_back(&*cit);
-    sort(subnodes.begin(), subnodes.end(), lt_fn);
+      subnodeps.push_back(&*cit);
+    sort(subnodeps.begin(), subnodeps.end(), lt_fn);
     vector<unique_ptr<const pom_xml_node>> pom_subnodes;
     bool gap_before_subnode{};
-    for (auto nodep : subnodes) {
+    for (auto nodep : subnodeps) {
       pom_subnodes.push_back(unique_ptr<const pom_xml_node>{new pom_xml_node{rw_fn(*nodep, gap_before_subnode)}});
       gap_before_subnode = gap_before_subnodes;
     }
