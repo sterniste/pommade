@@ -25,8 +25,8 @@ template <typename Node> class basic_xml_node {
   std::unique_ptr<xml_tree<Node>> subtree;
 
  public:
-  basic_xml_node(const basic_xml_node& that) : lineno{that.lineno}, level{that.level}, name{that.name}, comment{that.comment ? new std::string{*that.comment} : nullptr}, content{that.content ? new std::string{*that.content} : nullptr}, subtree{that.subtree ? new xml_tree<Node>{*that.subtree} : nullptr} {}
   basic_xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, const std::string* content = nullptr) : lineno{lineno}, level{level}, name{name}, comment{comment ? new std::string{*comment} : nullptr}, content{content ? new std::string{*content} : nullptr} {}
+  basic_xml_node(const basic_xml_node& that) : lineno{that.lineno}, level{that.level}, name{that.name}, comment{that.comment ? new std::string{*that.comment} : nullptr}, content{that.content ? new std::string{*that.content} : nullptr}, subtree{that.subtree ? new xml_tree<Node>{*that.subtree} : nullptr} {}
 
   bool operator==(const basic_xml_node& that) const { return level == that.level && name == that.name; }
   bool operator<(const basic_xml_node& that) const { return level < that.level || (level == that.level && name < that.name); }
@@ -118,6 +118,11 @@ template <typename Node> class xml_tree {
   std::vector<const Node*> find_not_in(const std::vector<const char*>& name_not_in) const;
 };
 
+template <typename Node> xml_tree<Node>::xml_tree(const xml_tree& that) : names{that.names} {
+  for (const auto& node : that.nodes)
+    nodes.push_back(node ? std::unique_ptr<Node>{new Node{*node}} : std::unique_ptr<Node>{});
+}
+
 template <typename Node>
 Node*
 xml_tree<Node>::add_node(Node&& node) {
@@ -169,11 +174,6 @@ xml_tree<Node>::find_not_in(const std::vector<const char*>& name_not_in) const {
       found.push_back(nullptr);
   }
   return found;
-}
-
-template <typename Node> xml_tree<Node>::xml_tree(const xml_tree& that) : names{that.names} {
-  for (const auto& node : that.nodes)
-    nodes.push_back(node ? std::unique_ptr<Node>{new Node{*node}} : std::unique_ptr<Node>{});
 }
 
 template <typename Node> std::ostream& operator<<(std::ostream& os, const xml_tree<Node>& tree) {

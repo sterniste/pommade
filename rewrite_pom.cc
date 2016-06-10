@@ -171,7 +171,7 @@ pom_rewriter::get_rw_fn(rw_key key) {
     break;
   }
   assert(rw_f);
-  auto insert{rws_fn_map.insert(pair<rw_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_f, this, _1, _2)})};
+  auto insert = rws_fn_map.insert(pair<rw_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_f, this, _1, _2)});
   assert(insert.second);
   return insert.first->second;
 }
@@ -188,7 +188,7 @@ pom_rewriter::get_rw_with_flag_fn(rw_with_flag_key key) {
     break;
   }
   assert(rw_with_flag_f);
-  auto insert{rws_with_flag_fn_map.insert(pair<rw_with_flag_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_with_flag_f, this, _1, _2, key.flag)})};
+  auto insert = rws_with_flag_fn_map.insert(pair<rw_with_flag_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_with_flag_f, this, _1, _2, key.flag)});
   assert(insert.second);
   return insert.first->second;
 }
@@ -198,7 +198,7 @@ pom_rewriter::get_lt_fn(lt_key key) {
   const auto cit = lts_fn_map.find(key);
   if (cit != lts_fn_map.cend())
     return cit->second;
-  bool (pom_rewriter::*lt_f)(const xml_node*, const xml_node*) const{};
+  bool (pom_rewriter::*lt_f)(const xml_node*, const xml_node*) const {};
   switch (key) {
   case lt_exclusion:
     lt_f = &pom_rewriter::lt_exclusion_nodes;
@@ -208,7 +208,7 @@ pom_rewriter::get_lt_fn(lt_key key) {
     break;
   }
   assert(lt_f);
-  auto insert{lts_fn_map.insert(pair<lt_key, function<bool(const xml_node*, const xml_node*)>>{key, bind(lt_f, this, _1, _2)})};
+  auto insert = lts_fn_map.insert(pair<lt_key, function<bool(const xml_node*, const xml_node*)>>{key, bind(lt_f, this, _1, _2)});
   assert(insert.second);
   return insert.first->second;
 }
@@ -353,7 +353,7 @@ pom_rewriter::rewrite_scope_node(const xml_node& node, bool gap_before) {
   assert(node.get_content() && !node.tree());
   return pom_xml_node{node, gap_before};
 }
-  
+
 pom_xml_node
 pom_rewriter::rewrite_exclusion_node(const xml_node& node, bool gap_before) {
   assert(node.name == "exclusion" && !node.get_content() && node.tree() && node.tree()->node_cnt() >= 1);
@@ -373,7 +373,7 @@ pom_rewriter::rewrite_exclusions_node(const xml_node& node, bool gap_before) {
   assert(node.name == "exclusions" && !node.get_content());
   return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_exclusion), get_lt_fn(lt_exclusion));
 }
-  
+
 pom_xml_node
 pom_rewriter::rewrite_dependency_node(const xml_node& node, bool gap_before) {
   assert(node.name == "dependency" && !node.get_content() && node.tree() && node.tree()->node_cnt() <= 6);
