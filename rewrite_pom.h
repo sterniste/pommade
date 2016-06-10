@@ -15,7 +15,7 @@ struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
   const bool gap_before;
 
   pom_xml_node(unsigned short lineno, unsigned short level, const std::string& name, const std::string* comment = nullptr, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{lineno, level, name, comment}, gap_before{gap_before} {}
- pom_xml_node(const xml_graph::xml_node& node, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, node.comment.get(), node.get_content()}, gap_before{gap_before} {}
+  pom_xml_node(const xml_graph::xml_node& node, bool gap_before = false) : xml_graph::basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, node.comment.get(), node.get_content()}, gap_before{gap_before} {}
   pom_xml_node(const pom_xml_node& that) : xml_graph::basic_xml_node<pom_xml_node>{static_cast<const xml_graph::basic_xml_node<pom_xml_node>&>(that)}, gap_before{that.gap_before} {}
 
   friend std::ostream& operator<<(std::ostream& os, const pom_xml_node& node) {
