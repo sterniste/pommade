@@ -356,14 +356,14 @@ pom_rewriter::rewrite_scope_node(const xml_node& node, bool gap_before) {
   
 pom_xml_node
 pom_rewriter::rewrite_exclusion_node(const xml_node& node, bool gap_before) {
-  assert(node.name == "exclusion" && !node.get_content() && node.tree() && node.tree()->node_cnt() == 2);
+  assert(node.name == "exclusion" && !node.get_content() && node.tree() && node.tree()->node_cnt() >= 1);
 
   const vector<const xml_node*> exclusion_tree{node.tree()->find_in(vector<const char*>{"groupId", "artifactId"})};
-  assert(exclusion_tree.size() == 2 && exclusion_tree[0] && exclusion_tree[1]);
+  assert(exclusion_tree.size() == 2 && exclusion_tree[0]);
 
   pom_xml_node rw_exclusion{node.lineno, node.level, node.name, node.comment.get(), gap_before};
   rw_exclusion.add_subnode(rewrite_group_id_node(*exclusion_tree[0], false));
-  rw_exclusion.add_subnode(rewrite_artifact_id_node(*exclusion_tree[1], false));
+  add_nonempty_rewrite_node(rw_exclusion, false, exclusion_tree[1], get_rw_fn(rw_artifact_id));
 
   return rw_exclusion;
 }
@@ -484,13 +484,14 @@ pom_rewriter::rewrite_activation_node(const xml_node& node, bool gap_before) {
   assert(!node.get_content() && node.tree());
 
   const vector<const xml_node*> activation_tree{node.tree()->find_in(vector<const char*>{"activeByDefault", "property"})};
-  assert(activation_tree.size() >= 2 && activation_tree[1]);
+  assert(activation_tree.size() >= 2);
 
   pom_xml_node rw_activation{node.lineno, node.level, node.name, node.comment.get(), gap_before};
   add_nonempty_rewrite_node(rw_activation, false, activation_tree[0], get_rw_fn(rw_active_by_default));
-  for (auto i = 1U; i < activation_tree.size(); ++i)
-    rw_activation.add_subnode(rewrite_property_node(*activation_tree[i], false));
-
+  if (activation_tree[1]) {
+    for (auto i = 1U; i < activation_tree.size(); ++i)
+      rw_activation.add_subnode(rewrite_property_node(*activation_tree[i], false));
+  }
   return rw_activation;
 }
 
