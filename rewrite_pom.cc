@@ -58,8 +58,17 @@ pom_rewriter::get_rw_fn(rw_key key) {
   case rw_scm:
     rw_f = &pom_rewriter::rewrite_scm_node;
     break;
-  case rw_distribution_management_element:
-    rw_f = &pom_rewriter::rewrite_distribution_management_element_node;
+  case rw_repository_element:
+    rw_f = &pom_rewriter::rewrite_repository_element_node;
+    break;
+  case rw_repository:
+    rw_f = &pom_rewriter::rewrite_repository_node;
+    break;
+  case rw_snapshot_repository_element:
+    rw_f = &pom_rewriter::rewrite_snapshot_repository_element_node;
+    break;
+  case rw_snapshot_repository:
+    rw_f = &pom_rewriter::rewrite_snapshot_repository_node;
     break;
   case rw_distribution_management:
     rw_f = &pom_rewriter::rewrite_distribution_management_node;
@@ -337,15 +346,41 @@ pom_rewriter::rewrite_scm_node(const xml_node& node, bool gap_before) {
 }
 
 pom_xml_node
-pom_rewriter::rewrite_distribution_management_element_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content() && node.tree());
+pom_rewriter::rewrite_repository_element_node(const xml_node& node, bool gap_before) {
+  assert(node.get_content() && !node.tree());
   return pom_xml_node{node, gap_before};
 }
 
 pom_xml_node
-pom_rewriter::rewrite_distribution_management_node(const xml_node& node, bool gap_before) {
+pom_rewriter::rewrite_repository_node(const xml_node& node, bool gap_before) {
   assert(!node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_distribution_management_element), [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
+  return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_repository_element), [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
+}
+
+pom_xml_node
+pom_rewriter::rewrite_snapshot_repository_element_node(const xml_node& node, bool gap_before) {
+  assert(node.get_content() && !node.tree());
+  return pom_xml_node{node, gap_before};
+}
+
+pom_xml_node
+pom_rewriter::rewrite_snapshot_repository_node(const xml_node& node, bool gap_before) {
+  assert(!node.get_content());
+  return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_snapshot_repository_element), [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
+}
+
+pom_xml_node
+pom_rewriter::rewrite_distribution_management_node(const xml_node& node, bool gap_before) {
+  assert(!node.get_content() && node.tree() && node.tree()->node_cnt() <= 2);
+
+  const vector<const xml_node*> distribution_management_tree{node.tree()->find_in(vector<const char*>{"repository", "snapshotRepository"})};
+  assert(distribution_management_tree.size() == 2);
+
+  pom_xml_node rw_distribution_management{node.lineno, node.level, node.name, node.comment.get(), gap_before};
+  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[0], get_rw_fn(rw_repository));
+  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[1], get_rw_fn(rw_snapshot_repository));
+
+  return rw_distribution_management;
 }
 
 pom_xml_node

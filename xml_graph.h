@@ -100,7 +100,6 @@ template <typename Node> xml_tree_iterator<Node> xml_tree_iterator<Node>::operat
 }
 
 template <typename Node> class xml_tree {
-  std::unordered_set<std::string> names;
   typename std::vector<std::unique_ptr<const Node>> nodes;
 
  public:
@@ -118,7 +117,7 @@ template <typename Node> class xml_tree {
   std::vector<const Node*> find_not_in(const std::vector<const char*>& name_not_in) const;
 };
 
-template <typename Node> xml_tree<Node>::xml_tree(const xml_tree& that) : names{that.names} {
+template <typename Node> xml_tree<Node>::xml_tree(const xml_tree& that) {
   for (const auto& node : that.nodes)
     nodes.push_back(node ? std::unique_ptr<Node>{new Node{*node}} : std::unique_ptr<Node>{});
 }
@@ -126,7 +125,6 @@ template <typename Node> xml_tree<Node>::xml_tree(const xml_tree& that) : names{
 template <typename Node>
 Node*
 xml_tree<Node>::add_node(Node&& node) {
-  names.insert(node.name);
   Node* nodep{};
   nodes.push_back(std::unique_ptr<const Node>{nodep = new Node{std::move(node)}});
   return nodep;
@@ -135,8 +133,6 @@ xml_tree<Node>::add_node(Node&& node) {
 template <typename Node>
 void
 xml_tree<Node>::add_nodes(std::vector<std::unique_ptr<const Node>>&& nodes) {
-  for (const auto& node : nodes)
-    names.insert(node->name);
   std::move(nodes.begin(), nodes.end(), std::back_inserter(this->nodes));
 }
 
