@@ -37,7 +37,7 @@ template <typename Node> class basic_xml_node {
 
   Node* add_subnode(Node&& subnode);
   void add_subnodes(std::vector<std::unique_ptr<const Node>>&& subnodes);
-  const xml_tree<Node>* tree() const { return subtree ? subtree.get() : nullptr; }
+  const xml_tree<Node>* tree() const { return subtree && subtree.get()->node_cnt() ? subtree.get() : nullptr; }
 
   friend std::ostream& operator<<(std::ostream& os, const basic_xml_node& node) {
     if (node.comment) {
