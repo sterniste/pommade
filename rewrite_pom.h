@@ -50,7 +50,7 @@ using lt_key = unsigned short int;
 class pom_rewriter; 
 
 struct pom_rewriter_fns {
-  enum rw_keys { rw_model_version = 0, rw_group_id, rw_artifact_id, rw_parent_version, rw_relative_path, rw_parent, rw_version, rw_packaging, rw_project_property, rw_project_properties, rw_scm_element, rw_scm, rw_repository_element, rw_repository, rw_snapshot_repository_element, rw_snapshot_repository, rw_distribution_management, rw_scope, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_module, rw_modules, rw_id, rw_name, rw_value, rw_properties, rw_active_by_default, rw_activation, rw_configuration, rw_phase, rw_goal, rw_goals, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_filtering, rw_include, rw_includes, rw_exclude, rw_excludes, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profile, rw_active_profiles };
+  enum rw_keys { rw_parent = 0, rw_project_properties, rw_scm, rw_repository, rw_snapshot_repository, rw_distribution_management, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_modules, rw_properties, rw_activation, rw_configuration, rw_goals, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_includes, rw_excludes, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profiles };
   std::unordered_map<rw_key, std::function<pom_xml_node(const xml_graph::xml_node&, bool)>> rws_fn_map;
 
   enum rw_with_flags { rw_with_flag_property = 0 };
@@ -77,58 +77,38 @@ class pom_rewriter : private pom_rewriter_fns {
   pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
   pom_xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn, const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& lt_fn);
 
-  pom_xml_node rewrite_model_version_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_group_id_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_artifact_id_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_parent_version_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_relative_path_node(const xml_graph::xml_node& node, bool gap_before);
+  static pom_xml_node rewrite_leaf_node(const xml_graph::xml_node& node, bool gap_before);
+  
   pom_xml_node rewrite_parent_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_version_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_packaging_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_project_property_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_project_properties_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_repository_element_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_repository_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_snapshot_repository_element_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_snapshot_repository_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_scm_element_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_scm_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_distribution_management_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_scope_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_exclusion_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_exclusions_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_dependency_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_dependencies_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_dependency_management_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_module_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_modules_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_id_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_name_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_value_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_property_node(const xml_graph::xml_node& node, bool gap_before, bool unvalued_ok = false);
   pom_xml_node rewrite_properties_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_active_by_default_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_activation_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_configuration_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_phase_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_goal_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_goals_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_execution_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_executions_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_plugin_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_plugins_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_plugin_management_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_filtering_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_include_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_includes_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_exclude_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_excludes_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_resource_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_resources_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_build_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_profile_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_profiles_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_active_profile_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_active_profiles_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_project_node(const xml_graph::xml_node& node);
 
