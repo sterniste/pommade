@@ -6,7 +6,6 @@
 #include <xercesc/util/XMLException.hpp>
 
 #include "rewrite_pom.h"
-#include "xml_graph.h"
 #include "xml_parser.h"
 
 namespace {
