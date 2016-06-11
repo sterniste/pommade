@@ -25,7 +25,7 @@ pom_xml_node::pom_xml_node(const xml_node& node, bool gap_before) : basic_xml_no
 }
 
 const function<pom_xml_node(const xml_node&, bool)>&
-pom_rewriter::get_rw_fn(rw_key key) {
+pom_rewriter_fns::get_rw_fn(rw_key key, pom_rewriter* rewriter) {
   const auto cit = rws_fn_map.find(key);
   if (cit != rws_fn_map.cend())
     return cit->second;
@@ -189,13 +189,13 @@ pom_rewriter::get_rw_fn(rw_key key) {
     break;
   }
   assert(rw_f);
-  auto insert = rws_fn_map.insert(pair<rw_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_f, this, _1, _2)});
+  auto insert = rws_fn_map.insert(pair<rw_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_f, rewriter, _1, _2)});
   assert(insert.second);
   return insert.first->second;
 }
 
 const function<pom_xml_node(const xml_node&, bool)>&
-pom_rewriter::get_rw_with_flag_fn(rw_with_flag_key key) {
+pom_rewriter_fns::get_rw_with_flag_fn(rw_with_flag_key key, pom_rewriter* rewriter) {
   const auto cit = rws_with_flag_fn_map.find(key);
   if (cit != rws_with_flag_fn_map.cend())
     return cit->second;
@@ -206,13 +206,13 @@ pom_rewriter::get_rw_with_flag_fn(rw_with_flag_key key) {
     break;
   }
   assert(rw_with_flag_f);
-  auto insert = rws_with_flag_fn_map.insert(pair<rw_with_flag_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_with_flag_f, this, _1, _2, key.flag)});
+  auto insert = rws_with_flag_fn_map.insert(pair<rw_with_flag_key, function<pom_xml_node(const xml_node&, bool)>>{key, bind(rw_with_flag_f, rewriter, _1, _2, key.flag)});
   assert(insert.second);
   return insert.first->second;
 }
 
 const function<bool(const xml_node*, const xml_node*)>&
-pom_rewriter::get_lt_fn(lt_key key) {
+pom_rewriter_fns::get_lt_fn(lt_key key, pom_rewriter* rewriter) {
   const auto cit = lts_fn_map.find(key);
   if (cit != lts_fn_map.cend())
     return cit->second;
@@ -226,7 +226,7 @@ pom_rewriter::get_lt_fn(lt_key key) {
     break;
   }
   assert(lt_f);
-  auto insert = lts_fn_map.insert(pair<lt_key, function<bool(const xml_node*, const xml_node*)>>{key, bind(lt_f, this, _1, _2)});
+  auto insert = lts_fn_map.insert(pair<lt_key, function<bool(const xml_node*, const xml_node*)>>{key, bind(lt_f, rewriter, _1, _2)});
   assert(insert.second);
   return insert.first->second;
 }

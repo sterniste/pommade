@@ -47,6 +47,8 @@ struct rw_with_flag_key {
 
 using lt_key = unsigned short int;
 
+class pom_rewriter; 
+
 struct pom_rewriter_fns {
   enum rw_keys { rw_model_version = 0, rw_group_id, rw_artifact_id, rw_parent_version, rw_relative_path, rw_parent, rw_version, rw_packaging, rw_project_property, rw_project_properties, rw_scm_element, rw_scm, rw_repository_element, rw_repository, rw_snapshot_repository_element, rw_snapshot_repository, rw_distribution_management, rw_scope, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_module, rw_modules, rw_id, rw_name, rw_value, rw_properties, rw_active_by_default, rw_activation, rw_configuration, rw_phase, rw_goal, rw_goals, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_filtering, rw_include, rw_includes, rw_exclude, rw_excludes, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profile, rw_active_profiles };
   std::unordered_map<rw_key, std::function<pom_xml_node(const xml_graph::xml_node&, bool)>> rws_fn_map;
@@ -56,14 +58,20 @@ struct pom_rewriter_fns {
 
   enum lt_keys { lt_exclusion = 0, lt_dependency };
   std::unordered_map<lt_key, std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>> lts_fn_map;
+
+  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key, pom_rewriter* rewriter);
+  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key, pom_rewriter* rewriter);
+  const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key, pom_rewriter* rewriter);
 };
 
 class pom_rewriter : private pom_rewriter_fns {
+  friend struct pom_rewriter_fns;
+  
   bool has_parent;
   
-  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key);
-  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key);
-  const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key);
+  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key) { return pom_rewriter_fns::get_rw_fn(key, this); }
+  const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key) { return pom_rewriter_fns::get_rw_with_flag_fn(key, this); }
+  const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key) { return pom_rewriter_fns::get_lt_fn(key, this); }
 
   bool add_nonempty_rewrite_node(pom_xml_node& node, bool gap_before, const xml_graph::xml_node* subnode, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
   pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
