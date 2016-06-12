@@ -13,10 +13,9 @@ namespace pommade {
 using namespace std;
 using namespace std::placeholders;
 using namespace xml_graph;
-  
-const function<pom_xml_node(const xml_node&, bool)>
-pom_xml_node::copy_node_fn{[](const xml_node& node, bool gap_before) { return pom_xml_node{node, gap_before}; }};
-  
+
+const function<pom_xml_node(const xml_node&, bool)> pom_xml_node::copy_node_fn{[](const xml_node& node, bool gap_before) { return pom_xml_node{node, gap_before}; }};
+
 pom_xml_node::pom_xml_node(const xml_node& node, bool gap_before) : basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, node.comment.get(), node.get_content()}, gap_before{gap_before} {
   if (node.tree()) {
     for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
@@ -33,18 +32,6 @@ pom_rewriter_fns::get_rw_fn(rw_key key, pom_rewriter* rewriter) {
   switch (key) {
   case rw_parent:
     rw_f = &pom_rewriter::rewrite_parent_node;
-    break;
-  case rw_project_properties:
-    rw_f = &pom_rewriter::rewrite_project_properties_node;
-    break;
-  case rw_scm:
-    rw_f = &pom_rewriter::rewrite_scm_node;
-    break;
-  case rw_repository:
-    rw_f = &pom_rewriter::rewrite_repository_node;
-    break;
-  case rw_snapshot_repository:
-    rw_f = &pom_rewriter::rewrite_snapshot_repository_node;
     break;
   case rw_distribution_management:
     rw_f = &pom_rewriter::rewrite_distribution_management_node;
@@ -64,9 +51,6 @@ pom_rewriter_fns::get_rw_fn(rw_key key, pom_rewriter* rewriter) {
   case rw_dependency_management:
     rw_f = &pom_rewriter::rewrite_dependency_management_node;
     break;
-  case rw_modules:
-    rw_f = &pom_rewriter::rewrite_modules_node;
-    break;
   case rw_properties:
     rw_f = &pom_rewriter::rewrite_properties_node;
     break;
@@ -75,9 +59,6 @@ pom_rewriter_fns::get_rw_fn(rw_key key, pom_rewriter* rewriter) {
     break;
   case rw_configuration:
     rw_f = &pom_rewriter::rewrite_configuration_node;
-    break;
-  case rw_goals:
-    rw_f = &pom_rewriter::rewrite_goals_node;
     break;
   case rw_execution:
     rw_f = &pom_rewriter::rewrite_execution_node;
@@ -93,12 +74,6 @@ pom_rewriter_fns::get_rw_fn(rw_key key, pom_rewriter* rewriter) {
     break;
   case rw_plugin_management:
     rw_f = &pom_rewriter::rewrite_plugin_management_node;
-    break;
-  case rw_includes:
-    rw_f = &pom_rewriter::rewrite_includes_node;
-    break;
-  case rw_excludes:
-    rw_f = &pom_rewriter::rewrite_excludes_node;
     break;
   case rw_resource:
     rw_f = &pom_rewriter::rewrite_resource_node;
@@ -162,6 +137,16 @@ pom_rewriter_fns::get_lt_fn(lt_key key, pom_rewriter* rewriter) {
   return insert.first->second;
 }
 
+preferred_artifact
+preferred_artifact::parse(const string& preferred_artifact_spec) {
+  const auto pos = preferred_artifact_spec.find(':');
+  if (pos == 0)
+    throw invalid_argument{string{"empty groupId in preferred-artifact spec '"} + preferred_artifact_spec + '\''};
+  if (pos == string::npos)
+    return preferred_artifact{preferred_artifact_spec};
+  return preferred_artifact{preferred_artifact_spec.substr(0, pos), preferred_artifact_spec.substr(pos + 1)};
+}
+
 bool
 pom_rewriter::add_nonempty_rewrite_node(pom_xml_node& node, bool gap_before, const xml_node* subnode, const function<pom_xml_node(const xml_node&, bool)>& rw_fn) {
   if (subnode) {
@@ -210,6 +195,18 @@ pom_rewriter::rewrite_leaf_node(const xml_node& node, bool gap_before) {
 }
 
 pom_xml_node
+pom_rewriter::rewrite_leaf_subnodes(const xml_node& node, bool gap_before) {
+  assert(!node.get_content());
+  return rewrite_subnodes(node, gap_before, false, rewrite_leaf_node);
+}
+
+pom_xml_node
+pom_rewriter::rewrite_leaf_subnodes_by_name(const xml_node& node, bool gap_before) {
+  assert(!node.get_content());
+  return rewrite_sort_subnodes(node, gap_before, false, rewrite_leaf_node, [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
+}
+
+pom_xml_node
 pom_rewriter::rewrite_parent_node(const xml_node& node, bool gap_before) {
   assert(!node.get_content() && node.tree() && node.tree()->node_cnt() <= 4);
 
@@ -226,30 +223,6 @@ pom_rewriter::rewrite_parent_node(const xml_node& node, bool gap_before) {
 }
 
 pom_xml_node
-pom_rewriter::rewrite_project_properties_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, rewrite_leaf_node, [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
-}
-
-pom_xml_node
-pom_rewriter::rewrite_scm_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, rewrite_leaf_node, [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
-}
-
-pom_xml_node
-pom_rewriter::rewrite_repository_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, rewrite_leaf_node, [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
-}
-
-pom_xml_node
-pom_rewriter::rewrite_snapshot_repository_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, rewrite_leaf_node, [](const xml_node* a, const xml_node* b) { return a->name < b->name; });
-}
-
-pom_xml_node
 pom_rewriter::rewrite_distribution_management_node(const xml_node& node, bool gap_before) {
   assert(!node.get_content() && node.tree() && node.tree()->node_cnt() <= 2);
 
@@ -257,8 +230,8 @@ pom_rewriter::rewrite_distribution_management_node(const xml_node& node, bool ga
   assert(distribution_management_tree.size() == 2);
 
   pom_xml_node rw_distribution_management{node.lineno, node.level, node.name, node.comment.get(), node.get_content(), gap_before};
-  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[0], get_rw_fn(rw_repository));
-  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[1], get_rw_fn(rw_snapshot_repository));
+  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[0], rewrite_leaf_subnodes_by_name);
+  add_nonempty_rewrite_node(rw_distribution_management, false, distribution_management_tree[1], rewrite_leaf_subnodes_by_name);
 
   return rw_distribution_management;
 }
@@ -321,12 +294,6 @@ pom_rewriter::rewrite_dependency_management_node(const xml_node& node, bool gap_
 }
 
 pom_xml_node
-pom_rewriter::rewrite_modules_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content() && node.tree());
-  return rewrite_subnodes(node, gap_before, false, rewrite_leaf_node);
-}
-
-pom_xml_node
 pom_rewriter::rewrite_property_node(const xml_node& node, bool gap_before, bool unvalued_ok) {
   assert(node.name == "property" && !node.get_content() && node.tree());
   if (unvalued_ok)
@@ -381,12 +348,6 @@ pom_rewriter::rewrite_configuration_node(const xml_node& node, bool gap_before) 
 }
 
 pom_xml_node
-pom_rewriter::rewrite_goals_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content() && node.tree());
-  return rewrite_subnodes(node, gap_before, false, rewrite_leaf_node);
-}
-
-pom_xml_node
 pom_rewriter::rewrite_execution_node(const xml_node& node, bool gap_before) {
   assert(node.name == "execution" && !node.get_content() && node.tree() && node.tree()->node_cnt() <= 4);
 
@@ -396,7 +357,7 @@ pom_rewriter::rewrite_execution_node(const xml_node& node, bool gap_before) {
   pom_xml_node rw_execution{node.lineno, node.level, node.name, node.comment.get(), node.get_content(), gap_before};
   add_nonempty_rewrite_node(rw_execution, false, execution_tree[0], rewrite_leaf_node);
   add_nonempty_rewrite_node(rw_execution, false, execution_tree[1], rewrite_leaf_node);
-  rw_execution.add_subnode(rewrite_goals_node(*execution_tree[2], false));
+  rw_execution.add_subnode(rewrite_leaf_subnodes(*execution_tree[2], false));
   add_nonempty_rewrite_node(rw_execution, false, execution_tree[3], get_rw_fn(rw_configuration));
 
   return rw_execution;
@@ -438,18 +399,6 @@ pom_rewriter::rewrite_plugin_management_node(const xml_node& node, bool gap_befo
 }
 
 pom_xml_node
-pom_rewriter::rewrite_includes_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_subnodes(node, gap_before, false, rewrite_leaf_node);
-}
-
-pom_xml_node
-pom_rewriter::rewrite_excludes_node(const xml_node& node, bool gap_before) {
-  assert(!node.get_content());
-  return rewrite_subnodes(node, gap_before, false, rewrite_leaf_node);
-}
-
-pom_xml_node
 pom_rewriter::rewrite_resource_node(const xml_node& node, bool gap_before) {
   assert(node.name == "resource" && !node.get_content() && node.tree() && node.tree()->node_cnt() <= 4);
 
@@ -459,8 +408,8 @@ pom_rewriter::rewrite_resource_node(const xml_node& node, bool gap_before) {
   pom_xml_node rw_resource{node.lineno, node.level, node.name, node.comment.get(), node.get_content(), gap_before};
   rw_resource.add_subnode(rewrite_leaf_node(*resource_tree[0], false));
   add_nonempty_rewrite_node(rw_resource, false, resource_tree[1], rewrite_leaf_node);
-  add_nonempty_rewrite_node(rw_resource, false, resource_tree[2], get_rw_fn(rw_includes));
-  add_nonempty_rewrite_node(rw_resource, false, resource_tree[3], get_rw_fn(rw_excludes));
+  add_nonempty_rewrite_node(rw_resource, false, resource_tree[2], rewrite_leaf_subnodes);
+  add_nonempty_rewrite_node(rw_resource, false, resource_tree[3], rewrite_leaf_subnodes);
 
   return rw_resource;
 }
@@ -495,7 +444,7 @@ pom_rewriter::rewrite_profile_node(const xml_node& node, bool gap_before) {
 
   pom_xml_node rw_profile{node.lineno, node.level, node.name, node.comment.get(), node.get_content(), gap_before};
   rw_profile.add_subnode(rewrite_leaf_node(*profile_tree[0], false));
-  add_nonempty_rewrite_node(rw_profile, false, profile_tree[1], get_rw_fn(rw_project_properties));
+  add_nonempty_rewrite_node(rw_profile, false, profile_tree[1], rewrite_leaf_subnodes_by_name);
   add_nonempty_rewrite_node(rw_profile, false, profile_tree[2], get_rw_fn(rw_activation));
   add_nonempty_rewrite_node(rw_profile, false, profile_tree[3], get_rw_fn(rw_build));
 
@@ -528,13 +477,13 @@ pom_rewriter::rewrite_project_node(const xml_node& node) {
   rw_project.add_subnode(rewrite_leaf_node(*project_tree[3], false));
   add_nonempty_rewrite_node(rw_project, false, project_tree[4], rewrite_leaf_node);
   add_nonempty_rewrite_node(rw_project, false, project_tree[5], rewrite_leaf_node);
-  add_nonempty_rewrite_node(rw_project, true, project_tree[6], get_rw_fn(rw_project_properties));
-  add_nonempty_rewrite_node(rw_project, true, project_tree[7], get_rw_fn(rw_scm));
+  add_nonempty_rewrite_node(rw_project, true, project_tree[6], rewrite_leaf_subnodes_by_name);
+  add_nonempty_rewrite_node(rw_project, true, project_tree[7], rewrite_leaf_subnodes_by_name);
   add_nonempty_rewrite_node(rw_project, true, project_tree[8], get_rw_fn(rw_distribution_management));
   add_nonempty_rewrite_node(rw_project, true, project_tree[9], get_rw_fn(rw_dependency_management));
   add_nonempty_rewrite_node(rw_project, true, project_tree[10], get_rw_fn(rw_dependencies));
   add_nonempty_rewrite_node(rw_project, true, project_tree[11], get_rw_fn(rw_build));
-  add_nonempty_rewrite_node(rw_project, true, project_tree[12], get_rw_fn(rw_modules));
+  add_nonempty_rewrite_node(rw_project, true, project_tree[12], rewrite_leaf_subnodes);
   add_nonempty_rewrite_node(rw_project, true, project_tree[13], get_rw_fn(rw_profiles));
   add_nonempty_rewrite_node(rw_project, true, project_tree[14], get_rw_fn(rw_active_profiles));
 

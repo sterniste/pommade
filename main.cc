@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -27,15 +28,8 @@ using namespace xml_parser;
 vector<preferred_artifact>
 parse_preferred_artifacts(const vector<string>& preferred_artifact_specs) {
   vector<preferred_artifact> preferred_artifacts;
-  for (const auto& preferred_artifact_spec : preferred_artifact_specs) {
-    const auto pos = preferred_artifact_spec.find(':');
-    if (pos == 0)
-      throw invalid_argument{string{"empty groupId in preferred-artifact spec '"} + preferred_artifact_spec + '\''};
-    if (pos == string::npos)
-      preferred_artifacts.push_back(preferred_artifact{preferred_artifact_spec});
-    else
-      preferred_artifacts.push_back(preferred_artifact{preferred_artifact_spec.substr(0, pos), preferred_artifact_spec.substr(pos + 1)});
-  }
+  for (const auto& preferred_artifact_spec : preferred_artifact_specs)
+    preferred_artifacts.push_back(preferred_artifact::parse(preferred_artifact_spec));
   return preferred_artifacts;
 }
 }
@@ -70,6 +64,7 @@ main(int argc, const char* argv[]) {
     cout << cmd_line_opts_desc;
     return 0;
   }
+  // configuration file
   if (var_map.count("config-file")) {
     const char* const config_file = var_map["config-file"].as<string>().c_str();
     if (!exists(config_file) || !is_regular_file(config_file)) {
@@ -83,6 +78,9 @@ main(int argc, const char* argv[]) {
   // validate file
   if (unrecognized_opts.empty()) {
     cerr << "no file set" << endl;
+    return 1;
+  } else if (unrecognized_opts.size() != 1) {
+    cerr << "unrecognized argument(s) after file '" << unrecognized_opts[0] << '\'' << endl;
     return 1;
   }
   const char* const file = unrecognized_opts[0].c_str();

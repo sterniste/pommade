@@ -28,13 +28,6 @@ struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
   }
 };
 
-struct preferred_artifact {
-  std::string group_id;
-  std::string artifact_id;
-
-  preferred_artifact(const std::string& group_id, const std::string& artifact_id = "") : group_id{group_id}, artifact_id{artifact_id} {}
-};
-
 using rw_key = unsigned short int;
 
 using rw_with_flag = unsigned short int;
@@ -57,7 +50,7 @@ using lt_key = unsigned short int;
 class pom_rewriter; 
 
 struct pom_rewriter_fns {
-  enum rw_keys { rw_parent = 0, rw_project_properties, rw_scm, rw_repository, rw_snapshot_repository, rw_distribution_management, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_modules, rw_properties, rw_activation, rw_configuration, rw_goals, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_includes, rw_excludes, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profiles };
+  enum rw_keys { rw_parent = 0, rw_distribution_management, rw_exclusion, rw_exclusions, rw_dependency, rw_dependencies, rw_dependency_management, rw_properties, rw_activation, rw_configuration, rw_execution, rw_executions, rw_plugin, rw_plugins, rw_plugin_management, rw_resource, rw_resources, rw_build, rw_profile, rw_profiles, rw_active_profiles };
   std::unordered_map<rw_key, std::function<pom_xml_node(const xml_graph::xml_node&, bool)>> rws_fn_map;
 
   enum rw_with_flags { rw_with_flag_property = 0 };
@@ -71,6 +64,16 @@ struct pom_rewriter_fns {
   const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key, pom_rewriter* rewriter);
 };
 
+struct preferred_artifact {
+  std::string group_id;
+  std::string artifact_id;
+
+  static preferred_artifact parse(const std::string& preferred_artifact_spec);
+
+private:  
+  preferred_artifact(const std::string& group_id, const std::string& artifact_id = "") : group_id{group_id}, artifact_id{artifact_id} {}
+};
+
 class pom_rewriter : private pom_rewriter_fns {
   friend struct pom_rewriter_fns;
   
@@ -81,17 +84,15 @@ class pom_rewriter : private pom_rewriter_fns {
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key) { return pom_rewriter_fns::get_rw_with_flag_fn(key, this); }
   const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key) { return pom_rewriter_fns::get_lt_fn(key, this); }
 
-  bool add_nonempty_rewrite_node(pom_xml_node& node, bool gap_before, const xml_graph::xml_node* subnode, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
-  pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
-  pom_xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn, const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& lt_fn);
+  static bool add_nonempty_rewrite_node(pom_xml_node& node, bool gap_before, const xml_graph::xml_node* subnode, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
+  static pom_xml_node rewrite_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn);
+  static pom_xml_node rewrite_sort_subnodes(const xml_graph::xml_node& node, bool gap_before, bool gap_before_subnodes, const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& rw_fn, const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& lt_fn);
 
   static pom_xml_node rewrite_leaf_node(const xml_graph::xml_node& node, bool gap_before);
+  static pom_xml_node rewrite_leaf_subnodes(const xml_graph::xml_node& node, bool gap_before);
+  static pom_xml_node rewrite_leaf_subnodes_by_name(const xml_graph::xml_node& node, bool gap_before);
   
   pom_xml_node rewrite_parent_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_project_properties_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_repository_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_snapshot_repository_node(const xml_graph::xml_node& node, bool gap_before);
-  pom_xml_node rewrite_scm_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_distribution_management_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_exclusion_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_exclusions_node(const xml_graph::xml_node& node, bool gap_before);
