@@ -1,6 +1,14 @@
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <vector>
+
+#include <boost/filesystem/operations.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/value_semantic.hpp>
+#include <boost/program_options/variables_map.hpp>
 
 #include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/util/XMLException.hpp>
@@ -10,16 +18,89 @@
 
 namespace {
 using namespace std;
+using namespace boost::filesystem;
+using namespace boost::program_options;
+using namespace xercesc_3_1;
 using namespace pommade;
 using namespace xml_parser;
-using namespace xercesc_3_1;
+
+vector<preferred_artifact>
+parse_preferred_artifacts(const vector<string>& preferred_artifact_specs) {
+  vector<preferred_artifact> preferred_artifacts;
+  for (const auto& preferred_artifact_spec : preferred_artifact_specs) {
+    const auto pos = preferred_artifact_spec.find(':');
+    if (pos == 0)
+      throw invalid_argument{string{"empty groupId in preferred-artifact spec '"} + preferred_artifact_spec + '\''};
+    if (pos == string::npos)
+      preferred_artifacts.push_back(preferred_artifact{preferred_artifact_spec});
+    else
+      preferred_artifacts.push_back(preferred_artifact{preferred_artifact_spec.substr(0, pos), preferred_artifact_spec.substr(pos + 1)});
+  }
+  return preferred_artifacts;
+}
 }
 
 int
 main(int argc, const char* argv[]) {
+  // gather options
+  ostringstream opt_headers_oss;
+  const char* const usage = "usage: pommade [options] file";
+  opt_headers_oss << "pommade" << endl << usage << endl << "Command-line options";
+  options_description cmd_line_opts_desc(opt_headers_oss.str());
+  cmd_line_opts_desc.add_options()("help,h", "this help message")("config-file,c", value<string>(), "configuration file");
+
+  options_description config_file_opts_desc("Configuration options");
+  config_file_opts_desc.add_options()("preferred-artifact,p", value<vector<string>>()->composing(), "groupId:artifactId");
+  cmd_line_opts_desc.add(config_file_opts_desc);
+
+  variables_map var_map;
+  vector<string> unrecognized_opts;
+  try {
+    const parsed_options parsed{command_line_parser(argc, argv).options(cmd_line_opts_desc).run()};
+    store(parsed, var_map);
+    notify(var_map);
+    unrecognized_opts = collect_unrecognized(parsed.options, include_positional);
+  } catch (const exception& e) {
+    cerr << "can't parse command line: " << e.what() << endl;
+    return 1;
+  }
+
+  // help
+  if (var_map.count("help")) {
+    cout << cmd_line_opts_desc;
+    return 0;
+  }
+  if (var_map.count("config-file")) {
+    const char* const config_file = var_map["config-file"].as<string>().c_str();
+    if (!exists(config_file) || !is_regular_file(config_file)) {
+      cerr << "can't find configuration file '" << config_file << '\'' << endl;
+      return 1;
+    }
+    store(parse_config_file<char>(var_map["config-file"].as<string>().c_str(), config_file_opts_desc), var_map);
+  }
+  notify(var_map);
+
+  // validate file
+  if (unrecognized_opts.empty()) {
+    cerr << "no file set" << endl;
+    return 1;
+  }
+  const char* const file = unrecognized_opts[0].c_str();
+
+  // option validation: preferred artifacts
+  vector<preferred_artifact> preferred_artifacts;
+  if (var_map.count("preferred-artifact")) {
+    try {
+      preferred_artifacts = parse_preferred_artifacts(var_map["preferred-artifact"].as<vector<string>>());
+    } catch (const invalid_argument& e) {
+      cerr << "invalid preferred artifacts: " << e.what() << endl;
+      return 1;
+    }
+  }
+
   try {
     default_xml_doc_handler doc_handler;
-    cout << pom_rewriter{}.rewrite_pom(xml_doc_parser{doc_handler}.parse_doc(argv[1]).get());
+    cout << pom_rewriter{preferred_artifacts}.rewrite_pom(xml_doc_parser{doc_handler}.parse_doc(file).get());
   } catch (const XMLException& e) {
     cerr << "caught XMLException: " << xmlstring{e.getMessage()} << endl;
     return 1;

@@ -21,9 +21,10 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
 
 find_package(PkgConfig)
 find_package(XercesC REQUIRED)
-find_package(Threads REQUIRED)
 
 set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost 1.58.0 COMPONENTS program_options filesystem system thread REQUIRED)
+find_package(Threads REQUIRED)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   find_library(ICUUC_LIBS sicuuc)
@@ -34,10 +35,12 @@ else ()
   find_library(ICUDATA_LIBS icudata)
 endif ()
 
+include_directories(${Boost_INCLUDE_DIRS})
+
 add_executable(pommade ${CC_FILES})
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  target_link_libraries(pommade ${XercesC_LIBRARY} ${ICUUC_LIBS} ${ICUDATA_LIBS} libstdc++.a libgcc_eh.a libodbc32.dll ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(pommade ${XercesC_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${ICUUC_LIBS} ${ICUDATA_LIBS} libstdc++.a libgcc_eh.a libodbc32.dll ${CMAKE_THREAD_LIBS_INIT})
 else ()
-  target_link_libraries(pommade ${XercesC_LIBRARY} ${ICUUC_LIBS} ${ICUDATA_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lltdl -ldl)  
+  target_link_libraries(pommade ${XercesC_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${ICUUC_LIBS} ${ICUDATA_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lltdl -ldl)
 endif ()

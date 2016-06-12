@@ -395,7 +395,7 @@ pom_rewriter::rewrite_execution_node(const xml_node& node, bool gap_before) {
 
   pom_xml_node rw_execution{node.lineno, node.level, node.name, node.comment.get(), node.get_content(), gap_before};
   add_nonempty_rewrite_node(rw_execution, false, execution_tree[0], rewrite_leaf_node);
-  add_nonempty_rewrite_node(rw_execution, false, execution_tree[1], get_rw_fn(rw_phase));
+  add_nonempty_rewrite_node(rw_execution, false, execution_tree[1], rewrite_leaf_node);
   rw_execution.add_subnode(rewrite_goals_node(*execution_tree[2], false));
   add_nonempty_rewrite_node(rw_execution, false, execution_tree[3], get_rw_fn(rw_configuration));
 
