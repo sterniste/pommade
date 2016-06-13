@@ -64,21 +64,21 @@ struct pom_rewriter_fns {
   const std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>& get_lt_fn(lt_key key, pom_rewriter* rewriter);
 };
 
-struct preferred_artifact {
+struct pom_artifact_matcher {
   std::string group_id;
   std::string artifact_id;
 
-  static preferred_artifact parse(const std::string& preferred_artifact_spec);
+  static pom_artifact_matcher parse(const std::string& pom_artifact_matcher_spec);
 
 private:  
-  preferred_artifact(const std::string& group_id, const std::string& artifact_id = "") : group_id{group_id}, artifact_id{artifact_id} {}
+  pom_artifact_matcher(const std::string& group_id, const std::string& artifact_id = "") : group_id{group_id}, artifact_id{artifact_id} {}
 };
 
 class pom_rewriter : private pom_rewriter_fns {
   friend struct pom_rewriter_fns;
   
   bool has_parent;
-  const std::vector<preferred_artifact>& preferred_artifacts;
+  const std::vector<pom_artifact_matcher>& preferred_artifacts;
   
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key) { return pom_rewriter_fns::get_rw_fn(key, this); }
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_with_flag_fn(rw_with_flag_key key) { return pom_rewriter_fns::get_rw_with_flag_fn(key, this); }
@@ -125,7 +125,7 @@ class pom_rewriter : private pom_rewriter_fns {
   bool lt_dependency_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
 
  public:
-  pom_rewriter(const std::vector<preferred_artifact>& preferred_artifacts) : has_parent{}, preferred_artifacts{preferred_artifacts} {}
+  pom_rewriter(const std::vector<pom_artifact_matcher>& preferred_artifacts) : has_parent{}, preferred_artifacts{preferred_artifacts} {}
 
   pom_xml_node rewrite_pom(const xml_graph::xml_node* node);
 };

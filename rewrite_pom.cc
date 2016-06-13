@@ -137,14 +137,14 @@ pom_rewriter_fns::get_lt_fn(lt_key key, pom_rewriter* rewriter) {
   return insert.first->second;
 }
 
-preferred_artifact
-preferred_artifact::parse(const string& preferred_artifact_spec) {
-  const auto pos = preferred_artifact_spec.find(':');
+pom_artifact
+pom_artifact::parse(const string& pom_artifact_spec) {
+  const auto pos = pom_artifact_spec.find(':');
   if (pos == 0)
-    throw invalid_argument{string{"empty groupId in preferred-artifact spec '"} + preferred_artifact_spec + '\''};
+    throw invalid_argument{string{"empty groupId in pom-artifact spec '"} + pom_artifact_spec + '\''};
   if (pos == string::npos)
-    return preferred_artifact{preferred_artifact_spec};
-  return preferred_artifact{preferred_artifact_spec.substr(0, pos), preferred_artifact_spec.substr(pos + 1)};
+    return pom_artifact{pom_artifact_spec};
+  return pom_artifact{pom_artifact_spec.substr(0, pos), pom_artifact_spec.substr(pos + 1)};
 }
 
 bool
@@ -492,6 +492,7 @@ pom_rewriter::rewrite_project_node(const xml_node& node) {
 
 bool
 pom_rewriter::lt_exclusion_nodes(const xml_node* a, const xml_node* b) const {
+  // TODO: can't assume that subnodes are sorted!
   auto a_cit = a->tree()->cbegin(), b_cit = b->tree()->cbegin();
   if (*a_cit->get_content() < *b_cit->get_content())
     return true;
@@ -502,7 +503,9 @@ pom_rewriter::lt_exclusion_nodes(const xml_node* a, const xml_node* b) const {
 
 bool
 pom_rewriter::lt_dependency_nodes(const xml_node* a, const xml_node* b) const {
+  // TODO: can't assume that subnodes are sorted!
   auto a_cit = a->tree()->cbegin(), b_cit = b->tree()->cbegin();
+  auto a_content = *a_cit->get_content(), b_content = *b_cit->get_content();
   if (*a_cit->get_content() < *b_cit->get_content())
     return true;
   if (*a_cit->get_content() == *b_cit->get_content())
