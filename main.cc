@@ -25,12 +25,12 @@ using namespace xercesc_3_1;
 using namespace pommade;
 using namespace xml_parser;
 
-vector<preferred_artifact>
-parse_preferred_artifacts(const vector<string>& preferred_artifact_specs) {
-  vector<preferred_artifact> preferred_artifacts;
-  for (const auto& preferred_artifact_spec : preferred_artifact_specs)
-    preferred_artifacts.push_back(preferred_artifact::parse(preferred_artifact_spec));
-  return preferred_artifacts;
+vector<pom_artifact_matcher>
+parse_pom_artifact_matchers(const vector<string>& pom_artifact_matcher_specs) {
+  vector<pom_artifact_matcher> pom_artifacts;
+  for (const auto& pom_artifact_matcher_spec : pom_artifact_matcher_specs)
+    pom_artifacts.push_back(pom_artifact_matcher::parse(pom_artifact_matcher_spec));
+  return pom_artifacts;
 }
 }
 
@@ -86,10 +86,10 @@ main(int argc, const char* argv[]) {
   const char* const file = unrecognized_opts[0].c_str();
 
   // option validation: preferred artifacts
-  vector<preferred_artifact> preferred_artifacts;
+  vector<pom_artifact_matcher> preferred_artifacts;
   if (var_map.count("preferred-artifact")) {
     try {
-      preferred_artifacts = parse_preferred_artifacts(var_map["preferred-artifact"].as<vector<string>>());
+      preferred_artifacts = parse_pom_artifact_matchers(var_map["preferred-artifact"].as<vector<string>>());
     } catch (const invalid_argument& e) {
       cerr << "invalid preferred artifacts: " << e.what() << endl;
       return 1;

@@ -137,14 +137,14 @@ pom_rewriter_fns::get_lt_fn(lt_key key, pom_rewriter* rewriter) {
   return insert.first->second;
 }
 
-pom_artifact
-pom_artifact::parse(const string& pom_artifact_spec) {
-  const auto pos = pom_artifact_spec.find(':');
+pom_artifact_matcher
+pom_artifact_matcher::parse(const string& pom_artifact_matcher_spec) {
+  const auto pos = pom_artifact_matcher_spec.find(':');
   if (pos == 0)
-    throw invalid_argument{string{"empty groupId in pom-artifact spec '"} + pom_artifact_spec + '\''};
+    throw invalid_argument{string{"empty groupId in pom-artifact spec '"} + pom_artifact_matcher_spec + '\''};
   if (pos == string::npos)
-    return pom_artifact{pom_artifact_spec};
-  return pom_artifact{pom_artifact_spec.substr(0, pos), pom_artifact_spec.substr(pos + 1)};
+    return pom_artifact_matcher{pom_artifact_matcher_spec};
+  return pom_artifact_matcher{pom_artifact_matcher_spec.substr(0, pos), pom_artifact_matcher_spec.substr(pos + 1)};
 }
 
 bool
