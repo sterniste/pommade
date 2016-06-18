@@ -15,6 +15,18 @@ using namespace xml_graph;
 
 const function<pom_xml_node(const xml_node&, bool)> pom_xml_node::copy_node_fn{[](const xml_node& node, bool gap_before) { return pom_xml_node{node, gap_before}; }};
 
+bool
+pom_artifact::operator<(const pom_artifact& that) const {
+  return group_id < that.group_id || (group_id == that.group_id && artifact_id < that.artifact_id);
+}
+
+bool
+pom_artifact_matcher::match(const pom_artifact& that) const {
+  if (group_id == that.group_id)
+    return artifact_id.empty() || artifact_id == that.artifact_id;
+  return false;
+}
+
 pom_xml_node::pom_xml_node(const xml_node& node, bool gap_before) : basic_xml_node<pom_xml_node>{node.lineno, node.level, node.name, node.comment.get(), node.get_content()}, gap_before{gap_before} {
   if (node.tree()) {
     for (auto cit = node.tree()->cbegin(); cit != node.tree()->cend(); ++cit)
@@ -375,27 +387,51 @@ pom_rewriter::rewrite_project_node(const xml_node& node) {
   return rw_project;
 }
 
+pom_artifact
+pom_rewriter::build_pom_artifact(const xml_node& node) {
+  assert(node.tree());
+  pom_artifact artifact{};
+  const auto cend = node.tree()->cend();
+  // can't assume that subnodes are sorted!
+  for (auto cit = node.tree()->cbegin(); cit != cend; ++cit) {
+    if (cit->name == "groupId" && cit->get_content()) {
+      artifact.group_id = *cit->get_content();
+      if (!artifact.artifact_id.empty())
+        break;
+    }
+    if (cit->name == "artifactId" && cit->get_content()) {
+      artifact.artifact_id = *cit->get_content();
+      if (!artifact.group_id.empty())
+        break;
+    }
+  }
+  return artifact;
+}
+
 bool
 pom_rewriter::lt_exclusion_nodes(const xml_node* a, const xml_node* b) const {
-  // TODO: can't assume that subnodes are sorted!
-  auto a_cit = a->tree()->cbegin(), b_cit = b->tree()->cbegin();
-  if (*a_cit->get_content() < *b_cit->get_content())
-    return true;
-  if (*a_cit->get_content() == *b_cit->get_content())
-    return *(++a_cit)->get_content() < *(++b_cit)->get_content();
-  return false;
+  const pom_artifact a_artifact{build_pom_artifact(*a)}, b_artifact{build_pom_artifact(*b)};
+  for (const auto& preferred_artifact : preferred_artifacts) {
+    const bool a_match{preferred_artifact.match(a_artifact)}, b_match{preferred_artifact.match(b_artifact)};
+    if (a_match && b_match)
+      return a_artifact < b_artifact;
+    if (a_match != b_match)
+      return a_match;
+  }
+  return a_artifact < b_artifact;
 }
 
 bool
 pom_rewriter::lt_dependency_nodes(const xml_node* a, const xml_node* b) const {
-  // TODO: can't assume that subnodes are sorted!
-  auto a_cit = a->tree()->cbegin(), b_cit = b->tree()->cbegin();
-  auto a_content = *a_cit->get_content(), b_content = *b_cit->get_content();
-  if (*a_cit->get_content() < *b_cit->get_content())
-    return true;
-  if (*a_cit->get_content() == *b_cit->get_content())
-    return *(++a_cit)->get_content() < *(++b_cit)->get_content();
-  return false;
+  const pom_artifact a_artifact{build_pom_artifact(*a)}, b_artifact{build_pom_artifact(*b)};
+  for (const auto& preferred_artifact : preferred_artifacts) {
+    const bool a_match{preferred_artifact.match(a_artifact)}, b_match{preferred_artifact.match(b_artifact)};
+    if (a_match && b_match)
+      return a_artifact < b_artifact;
+    if (a_match != b_match)
+      return a_match;
+  }
+  return a_artifact < b_artifact;
 }
 
 pom_xml_node

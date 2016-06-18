@@ -28,14 +28,23 @@ struct pom_xml_node : public xml_graph::basic_xml_node<pom_xml_node> {
   }
 };
 
-struct pom_artifact_matcher {
+struct pom_artifact {
   std::string group_id;
   std::string artifact_id;
 
+  pom_artifact() {}
+  pom_artifact(const std::string& group_id, const std::string& artifact_id) : group_id{group_id}, artifact_id{artifact_id} {}
+
+  bool operator<(const pom_artifact& that) const;
+};
+
+struct pom_artifact_matcher : public pom_artifact {
   static pom_artifact_matcher parse(const std::string& pom_artifact_matcher_spec);
 
+  bool match(const pom_artifact& that) const;
+
 private:  
-  pom_artifact_matcher(const std::string& group_id, const std::string& artifact_id = "") : group_id{group_id}, artifact_id{artifact_id} {}
+  pom_artifact_matcher(const std::string& group_id, const std::string& artifact_id = "") : pom_artifact{group_id, artifact_id} {}
 };
 
 class pom_rewriter : private pom_rewriter_fns {
@@ -85,6 +94,8 @@ class pom_rewriter : private pom_rewriter_fns {
   pom_xml_node rewrite_active_profiles_node(const xml_graph::xml_node& node, bool gap_before);
   pom_xml_node rewrite_project_node(const xml_graph::xml_node& node);
 
+  static pom_artifact build_pom_artifact(const xml_graph::xml_node& node);
+
   bool lt_exclusion_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
   bool lt_dependency_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
 
@@ -94,5 +105,4 @@ class pom_rewriter : private pom_rewriter_fns {
   pom_xml_node rewrite_pom(const xml_graph::xml_node* node);
 };
 }
-
 #endif

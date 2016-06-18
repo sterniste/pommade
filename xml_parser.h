@@ -233,5 +233,4 @@ basic_xml_doc_parser<Node>::parse_doc(const char* file) {
 
 using xml_doc_parser = basic_xml_doc_parser<xml_graph::xml_node>;
 }
-
 #endif
