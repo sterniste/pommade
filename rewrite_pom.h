@@ -96,8 +96,7 @@ class pom_rewriter : private pom_rewriter_fns {
 
   static pom_artifact build_pom_artifact(const xml_graph::xml_node& node);
 
-  bool lt_exclusion_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
-  bool lt_dependency_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
+  bool lt_artifact_nodes(const xml_graph::xml_node* a, const xml_graph::xml_node* b) const;
 
  public:
   pom_rewriter(const std::vector<pom_artifact_matcher>& preferred_artifacts) : has_parent{}, preferred_artifacts{preferred_artifacts} {}

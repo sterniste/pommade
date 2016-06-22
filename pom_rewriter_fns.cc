@@ -114,11 +114,8 @@ pom_rewriter_fns::get_lt_fn(lt_key key, pom_rewriter* rewriter) {
     return cit->second;
   bool (pom_rewriter::*lt_f)(const xml_node*, const xml_node*) const {};
   switch (key) {
-  case lt_exclusion:
-    lt_f = &pom_rewriter::lt_exclusion_nodes;
-    break;
-  case lt_dependency:
-    lt_f = &pom_rewriter::lt_dependency_nodes;
+  case lt_artifact:
+    lt_f = &pom_rewriter::lt_artifact_nodes;
     break;
   }
   assert(lt_f);

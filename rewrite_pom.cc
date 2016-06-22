@@ -150,7 +150,7 @@ pom_rewriter::rewrite_exclusion_node(const xml_node& node, bool gap_before) {
 pom_xml_node
 pom_rewriter::rewrite_exclusions_node(const xml_node& node, bool gap_before) {
   assert(node.name == "exclusions" && !node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_exclusion), get_lt_fn(lt_exclusion));
+  return rewrite_sort_subnodes(node, gap_before, false, get_rw_fn(rw_exclusion), get_lt_fn(lt_artifact));
 }
 
 pom_xml_node
@@ -174,7 +174,7 @@ pom_rewriter::rewrite_dependency_node(const xml_node& node, bool gap_before) {
 pom_xml_node
 pom_rewriter::rewrite_dependencies_node(const xml_node& node, bool gap_before) {
   assert(node.name == "dependencies" && !node.get_content());
-  return rewrite_sort_subnodes(node, gap_before, true, get_rw_fn(rw_dependency), get_lt_fn(lt_dependency));
+  return rewrite_sort_subnodes(node, gap_before, true, get_rw_fn(rw_dependency), get_lt_fn(lt_artifact));
 }
 
 pom_xml_node
@@ -409,20 +409,7 @@ pom_rewriter::build_pom_artifact(const xml_node& node) {
 }
 
 bool
-pom_rewriter::lt_exclusion_nodes(const xml_node* a, const xml_node* b) const {
-  const pom_artifact a_artifact{build_pom_artifact(*a)}, b_artifact{build_pom_artifact(*b)};
-  for (const auto& preferred_artifact : preferred_artifacts) {
-    const bool a_match{preferred_artifact.match(a_artifact)}, b_match{preferred_artifact.match(b_artifact)};
-    if (a_match && b_match)
-      return a_artifact < b_artifact;
-    if (a_match != b_match)
-      return a_match;
-  }
-  return a_artifact < b_artifact;
-}
-
-bool
-pom_rewriter::lt_dependency_nodes(const xml_node* a, const xml_node* b) const {
+pom_rewriter::lt_artifact_nodes(const xml_node* a, const xml_node* b) const {
   const pom_artifact a_artifact{build_pom_artifact(*a)}, b_artifact{build_pom_artifact(*b)};
   for (const auto& preferred_artifact : preferred_artifacts) {
     const bool a_match{preferred_artifact.match(a_artifact)}, b_match{preferred_artifact.match(b_artifact)};

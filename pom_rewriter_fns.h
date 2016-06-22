@@ -39,7 +39,7 @@ struct pom_rewriter_fns {
   enum rw_with_flags { rw_with_flag_property = 0 };
   std::unordered_map<rw_with_flag_key, std::function<pom_xml_node(const xml_graph::xml_node&, bool)>, rw_with_flag_key::hasher> rws_with_flag_fn_map;
 
-  enum lt_keys { lt_exclusion = 0, lt_dependency };
+  enum lt_keys { lt_artifact = 0 };
   std::unordered_map<lt_key, std::function<bool(const xml_graph::xml_node*, const xml_graph::xml_node*)>> lts_fn_map;
 
   const std::function<pom_xml_node(const xml_graph::xml_node&, bool)>& get_rw_fn(rw_key key, pom_rewriter* rewriter);
