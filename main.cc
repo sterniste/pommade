@@ -44,7 +44,7 @@ main(int argc, const char* argv[]) {
   cmd_line_opts_desc.add_options()("help,h", "this help message")("config-file,c", value<string>(), "configuration file");
 
   options_description config_file_opts_desc("Configuration options");
-  config_file_opts_desc.add_options()("preferred-artifact,p", value<vector<string>>()->composing(), "groupId:artifactId");
+  config_file_opts_desc.add_options()("preferred-artifact,p", value<vector<string>>()->composing(), "groupId[:artifactId]");
   cmd_line_opts_desc.add(config_file_opts_desc);
 
   variables_map var_map;
